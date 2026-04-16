@@ -1,0 +1,8 @@
+ipython
+pytest
+pytest-django
+black
+isort
+flake8
+pre-commit
+django-debug-toolbar
