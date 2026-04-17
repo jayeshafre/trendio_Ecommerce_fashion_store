@@ -17,7 +17,7 @@ urlpatterns = [
     # ─── Django Admin ──────────────────────────────────────
     path("admin/", admin.site.urls),
     # ─── API v1 ────────────────────────────────────────────
-    # path("api/v1/auth/", include("apps.users.urls", namespace="users")),
+     path("api/v1/auth/", include("apps.users.urls", namespace="users")),
     # path("api/v1/products/", include("apps.products.urls", namespace="products")),
     # path("api/v1/cart/", include("apps.cart.urls", namespace="cart")),
     # path("api/v1/orders/", include("apps.orders.urls", namespace="orders")),

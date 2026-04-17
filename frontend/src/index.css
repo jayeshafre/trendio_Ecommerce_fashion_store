@@ -1,81 +1,140 @@
-/* ─── Google Fonts ──────────────────────────────────────── */
-@import url("https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&display=swap");
+/* ─── Google Fonts — Ivory Luxe ─────────────────────────── */
+@import url("https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,700&family=DM+Sans:wght@300;400;500;600&display=swap");
 
 /* ─── Tailwind Directives ───────────────────────────────── */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* ─── CSS Custom Properties ─────────────────────────────── */
+/* ─── CSS Custom Properties — Ivory Luxe ────────────────── */
 @layer base {
   :root {
-    --color-primary:      #f97316;
-    --color-primary-dark: #ea580c;
-    --color-surface:      #ffffff;
-    --color-muted:        #6b7280;
-    --color-border:       #e5e7eb;
-    --radius:             0.5rem;
-    --shadow-sm:          0 1px 2px 0 rgb(0 0 0 / 0.05);
-    --shadow:             0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
-    --shadow-md:          0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    /* Core palette */
+    --ivory: #F8F5F2;
+    --ivory-muted: #EDE3D9;
+    --sand: #E5DCD3;
+    --warm-sand: #C2A98A;
+    --charcoal: #2B2B2B;
+    --muted-text: #7A6E67;
+    --error: #D97757;
+    --success: #84cc16;
+
+    /* Spacing */
+    --radius: 0.75rem;
   }
 
   * {
-    @apply border-surface-border;
+    box-sizing: border-box;
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   body {
-    @apply bg-surface-muted font-body text-gray-900 antialiased;
+    background-color: var(--ivory);
+    color: var(--charcoal);
+    font-family: 'DM Sans', system-ui, sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
   }
 
-  h1, h2, h3, h4 {
-    @apply font-display;
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: 'Playfair Display', Georgia, serif;
+    color: var(--charcoal);
+    line-height: 1.2;
   }
 }
 
-/* ─── Reusable Component Classes ────────────────────────── */
+/* ─── Component Classes ─────────────────────────────────── */
 @layer components {
+
+  /* ── Primary button (warm sand) */
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg
-           bg-brand-500 px-5 py-2.5 text-sm font-medium text-white
-           shadow-sm transition-all duration-200
-           hover:bg-brand-600 active:scale-[0.98]
-           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500
-           disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-6 py-3 text-xs font-bold tracking-[0.15em] text-white transition-all duration-200 hover:opacity-90 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C2A98A];
+    background-color: var(--warm-sand);
   }
 
+  /* ── Outline button */
   .btn-outline {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg
-           border border-surface-border bg-white px-5 py-2.5
-           text-sm font-medium text-gray-700 shadow-sm transition-all duration-200
-           hover:bg-surface-subtle active:scale-[0.98]
-           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500
-           disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border px-6 py-3 text-xs font-bold tracking-[0.15em] transition-all duration-200 hover:border-[#C2A98A] hover:text-[#C2A98A] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none;
+    border-color: var(--sand);
+    color: var(--muted-text);
   }
 
-  .input-field {
-    @apply w-full rounded-lg border border-surface-border bg-white
-           px-4 py-2.5 text-sm text-gray-900 shadow-sm
-           placeholder:text-gray-400
-           focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500
-           disabled:cursor-not-allowed disabled:bg-surface-subtle;
+  /* ── Input field — Ivory Luxe style */
+  .input-ivory {
+    @apply w-full rounded-xl border px-4 py-3 text-sm outline-none transition-all duration-150 focus:ring-1;
+    background-color: var(--ivory-muted);
+    border-color: var(--sand);
+    color: var(--charcoal);
+    --tw-ring-color: var(--warm-sand);
   }
 
-  .card {
-    @apply rounded-xl bg-white shadow-sm ring-1 ring-gray-200/60;
+  .input-ivory:focus {
+    border-color: var(--warm-sand);
   }
 
-  .badge {
-    @apply inline-flex items-center rounded-full px-2.5 py-0.5
-           text-xs font-medium;
+  .input-ivory::placeholder {
+    color: var(--muted-text);
+    opacity: 0.7;
   }
 
+  .input-ivory.error {
+    border-color: var(--error);
+  }
+
+  /* ── Card — ivory surface */
+  .card-ivory {
+    @apply rounded-xl border bg-white;
+    border-color: var(--sand);
+  }
+
+  /* ── Label */
+  .label-ivory {
+    @apply block text-[10px] font-semibold tracking-widest mb-1.5;
+    color: var(--muted-text);
+  }
+
+  /* ── Error message */
+  .error-text {
+    @apply text-xs mt-1;
+    color: var(--error);
+  }
+
+  /* ── Divider with text */
+  .divider-text {
+    @apply flex items-center gap-3 text-xs;
+    color: var(--muted-text);
+  }
+
+  .divider-text::before,
+  .divider-text::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background-color: var(--sand);
+  }
+
+  /* ── Skeleton shimmer */
   .skeleton {
-    @apply relative overflow-hidden rounded bg-gray-200 before:absolute
-           before:inset-0 before:-translate-x-full
-           before:bg-gradient-to-r before:from-transparent
-           before:via-white/40 before:to-transparent
-           before:animate-shimmer;
+    @apply relative overflow-hidden rounded;
+    background-color: var(--ivory-muted);
+  }
+
+  .skeleton::before {
+    @apply absolute inset-0 -translate-x-full animate-shimmer;
+    content: '';
+    background: linear-gradient(90deg,
+        transparent,
+        rgba(255, 255, 255, 0.4),
+        transparent);
   }
 }
 
@@ -85,7 +144,16 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
+  }
+
+  .text-muted {
+    color: var(--muted-text);
+  }
+
+  .font-display {
+    font-family: 'Playfair Display', Georgia, serif;
   }
 }

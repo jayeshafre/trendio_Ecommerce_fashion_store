@@ -1,66 +1,72 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-  content: [
-    "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx}",
-  ],
+  content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
   darkMode: "class",
   theme: {
     extend: {
-      // ─── Brand Colors ──────────────────────────────────
+      // ─── Ivory Luxe Brand Palette ──────────────────────────
       colors: {
+        // Primary action color — Warm Sand
         brand: {
-          50:  "#fff7ed",
-          100: "#ffedd5",
-          200: "#fed7aa",
-          300: "#fdba74",
-          400: "#fb923c",
-          500: "#f97316",   // primary orange
-          600: "#ea580c",
-          700: "#c2410c",
-          800: "#9a3412",
-          900: "#7c2d12",
-          950: "#431407",
+          DEFAULT: "#C2A98A",
+          light:   "#D4BFA6",
+          dark:    "#A8906F",
         },
-        surface: {
-          DEFAULT: "#ffffff",
-          muted:   "#f9fafb",
-          subtle:  "#f3f4f6",
-          border:  "#e5e7eb",
+        // Background surfaces
+        ivory: {
+          DEFAULT: "#F8F5F2",  // page background
+          muted:   "#EDE3D9",  // input / card fills
+          subtle:  "#F3EDE7",
         },
+        // Borders
+        sand: {
+          DEFAULT: "#E5DCD3",
+          dark:    "#D4C4B8",
+        },
+        // Text
+        charcoal: {
+          DEFAULT: "#2B2B2B",
+          muted:   "#7A6E67",
+          light:   "#A09890",
+        },
+        // Semantic
+        error: "#D97757",
+        success: "#84cc16",
       },
 
-      // ─── Typography ────────────────────────────────────
+      // ─── Typography ────────────────────────────────────────
       fontFamily: {
         display: ["'Playfair Display'", "Georgia", "serif"],
         body:    ["'DM Sans'", "system-ui", "sans-serif"],
         mono:    ["'JetBrains Mono'", "monospace"],
       },
 
-      // ─── Spacing & Sizing ──────────────────────────────
-      maxWidth: {
-        "8xl": "88rem",
-        "9xl": "96rem",
+      // ─── Border Radius ─────────────────────────────────────
+      borderRadius: {
+        xl:  "0.75rem",
+        "2xl": "1rem",
       },
 
-      // ─── Animations ────────────────────────────────────
+      // ─── Box Shadows ───────────────────────────────────────
+      boxShadow: {
+        "ivory-sm": "0 1px 3px 0 rgba(43, 43, 43, 0.06)",
+        ivory:      "0 2px 8px 0 rgba(43, 43, 43, 0.08)",
+        "ivory-md": "0 4px 16px 0 rgba(43, 43, 43, 0.10)",
+      },
+
+      // ─── Animations ────────────────────────────────────────
       keyframes: {
         "fade-in": {
-          "0%":   { opacity: "0", transform: "translateY(8px)" },
+          "0%":   { opacity: "0", transform: "translateY(6px)" },
           "100%": { opacity: "1", transform: "translateY(0)" },
-        },
-        "slide-in-right": {
-          "0%":   { transform: "translateX(100%)" },
-          "100%": { transform: "translateX(0)" },
         },
         shimmer: {
           "100%": { transform: "translateX(100%)" },
         },
       },
       animation: {
-        "fade-in":        "fade-in 0.3s ease-out",
-        "slide-in-right": "slide-in-right 0.3s ease-out",
-        shimmer:          "shimmer 1.5s infinite",
+        "fade-in": "fade-in 0.25s ease-out",
+        shimmer:   "shimmer 1.5s infinite",
       },
     },
   },

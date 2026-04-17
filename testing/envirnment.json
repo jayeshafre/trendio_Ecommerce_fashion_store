@@ -1,0 +1,104 @@
+{
+  "id": "trendio-env-local",
+  "name": "Trendio — Local Dev",
+  "values": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000/api/v1",
+      "type": "default",
+      "enabled": true,
+      "description": "Django dev server base URL. Change port if you use a different one."
+    },
+    {
+      "key": "api_docs_url",
+      "value": "http://localhost:8000/api",
+      "type": "default",
+      "enabled": true,
+      "description": "For Swagger UI and OpenAPI schema endpoints."
+    },
+    {
+      "key": "test_email",
+      "value": "john.doe@trendio.com",
+      "type": "default",
+      "enabled": true,
+      "description": "Test user email — used across all auth requests."
+    },
+    {
+      "key": "test_phone",
+      "value": "9876543210",
+      "type": "default",
+      "enabled": true,
+      "description": "Test user phone (10 digits, no +91 prefix)."
+    },
+    {
+      "key": "test_first_name",
+      "value": "John",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "test_last_name",
+      "value": "Doe",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "test_password",
+      "value": "SecurePass@123",
+      "type": "secret",
+      "enabled": true,
+      "description": "Initial password for the test user."
+    },
+    {
+      "key": "new_password",
+      "value": "NewSecurePass@456",
+      "type": "secret",
+      "enabled": true,
+      "description": "Used in Change Password and Reset Password requests."
+    },
+    {
+      "key": "otp_code",
+      "value": "",
+      "type": "default",
+      "enabled": true,
+      "description": "⚠️ MANUAL: Copy the 6-digit OTP from your Django terminal logs into this field before running OTP Verify or Reset Password."
+    },
+    {
+      "key": "access_token",
+      "value": "",
+      "type": "secret",
+      "enabled": true,
+      "description": "Auto-set by the Login request. Used as Bearer token in all authenticated requests."
+    },
+    {
+      "key": "refresh_token",
+      "value": "",
+      "type": "secret",
+      "enabled": true,
+      "description": "Auto-set by the Login request. Used in Token Refresh and Logout."
+    },
+    {
+      "key": "registered_user_id",
+      "value": "",
+      "type": "default",
+      "enabled": true,
+      "description": "Auto-set by Register. Stores the UUID of the newly created user."
+    },
+    {
+      "key": "user_email",
+      "value": "",
+      "type": "default",
+      "enabled": true,
+      "description": "Auto-set by Login. Stores the logged-in user's email."
+    },
+    {
+      "key": "user_role",
+      "value": "",
+      "type": "default",
+      "enabled": true,
+      "description": "Auto-set by Login. 'customer' or 'admin'."
+    }
+  ],
+  "_postman_variable_scope": "environment",
+  "description": "Local development environment for Trendio backend API testing.\n\n--- SETUP ---\n1. Import this file into Postman via Environments → Import\n2. Select 'Trendio — Local Dev' as your active environment\n3. Start your Django server: python manage.py runserver\n4. Run requests in order: Register → Login → everything else\n\n--- OTP TESTING ---\nWhen DEBUG=True, OTP codes are printed in your Django terminal:\n[DEV] OTP for 9876543210: 483921\nCopy that 6-digit code into the 'otp_code' variable before running OTP Verify."
+}
