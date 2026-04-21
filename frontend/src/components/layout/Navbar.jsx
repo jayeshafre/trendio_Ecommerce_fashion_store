@@ -5,8 +5,9 @@
  */
 import { useState, useRef, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ShoppingBag, Heart, User, Search, X, ChevronDown } from "lucide-react";
+import { ShoppingBag, Heart, User, Search, X, LogOut } from "lucide-react";
 import { useAuthStore, useCartStore } from "@store";
+import { useLogout } from "@hooks/useAuth";
 import { ROUTES } from "@constants";
 
 const NAV_CATEGORIES = [
@@ -23,6 +24,7 @@ export default function Navbar() {
   const searchRef           = useRef(null);
   const isAuthenticated     = useAuthStore((s) => s.isAuthenticated);
   const totalItems          = useCartStore((s) => s.totalItems);
+  const logoutMutation      = useLogout();
 
   // Focus search input when opened
   useEffect(() => {
@@ -164,6 +166,30 @@ export default function Navbar() {
               BAG
             </span>
           </Link>
+
+          {/* ── TEMPORARY Logout Button — remove when Profile dropdown is built ── */}
+          {isAuthenticated && (
+            <button
+              onClick={() => logoutMutation.mutate()}
+              disabled={logoutMutation.isPending}
+              className="flex flex-col items-center gap-0.5 px-4 py-1 transition-opacity hover:opacity-60 disabled:opacity-40"
+              style={{ borderLeft: "1px solid #E5DCD3" }}
+              title="Sign out"
+            >
+              <LogOut
+                size={18}
+                strokeWidth={1.5}
+                style={{ color: logoutMutation.isPending ? "#C2A98A" : "#D97757" }}
+              />
+              <span
+                className="text-[9px] font-semibold tracking-widest"
+                style={{ color: "#D97757" }}
+              >
+                {logoutMutation.isPending ? "…" : "LOGOUT"}
+              </span>
+            </button>
+          )}
+          {/* ── END TEMPORARY ─────────────────────────────────────────────────── */}
         </div>
       </div>
     </header>

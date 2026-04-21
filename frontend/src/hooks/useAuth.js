@@ -1,16 +1,10 @@
 /**
- * useAuth — all auth React Query hooks.
+ * useAuth.js — all auth React Query hooks.
  *
- * Exports:
- *   useMe()           → current user query
- *   useLogin()        → email + password login
- *   useRegister()     → new account creation
- *   useLogout()       → invalidate session + clear state
- *   useSendOtp()      → request OTP to phone/email
- *   useVerifyOtp()    → verify OTP (phone/email/login/reset)
- *   useForgotPassword()  → send reset code to email
- *   useResetPassword()   → verify OTP + set new password
- *   useChangePassword()  → change pw for logged-in user
+ * Import from "@hooks/useAuth":
+ *   useMe, useLogin, useRegister, useLogout,
+ *   useSendOtp, useVerifyOtp,
+ *   useForgotPassword, useResetPassword, useChangePassword
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
@@ -20,11 +14,10 @@ import { useAuthStore } from "@store";
 import { QUERY_KEYS, ROUTES } from "@constants";
 import { getApiError } from "@utils";
 
-// ── useMe ──────────────────────────────────────────────────────────────────────
+// useMe
 export function useMe() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
-  const setUser         = useAuthStore((s) => s.setUser);
-
+  const setUser = useAuthStore((s) => s.setUser);
   return useQuery({
     queryKey: QUERY_KEYS.AUTH.ME,
     queryFn: async () => {
@@ -32,24 +25,23 @@ export function useMe() {
       setUser(data);
       return data;
     },
-    enabled:   isAuthenticated,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    retry:     false,
+    enabled: isAuthenticated,
+    staleTime: 5 * 60 * 1000,
+    retry: false,
   });
 }
 
-// ── useLogin ───────────────────────────────────────────────────────────────────
+// useLogin
 export function useLogin() {
-  const navigate  = useNavigate();
+  const navigate = useNavigate();
   const setTokens = useAuthStore((s) => s.setTokens);
-  const setUser   = useAuthStore((s) => s.setUser);
-
+  const setUser = useAuthStore((s) => s.setUser);
   return useMutation({
     mutationFn: (credentials) => authApi.login(credentials),
     onSuccess: ({ data }) => {
       setTokens(data.access, data.refresh);
       setUser(data.user);
-      toast.success(`Welcome back, ${data.user.first_name}!`);
+      toast.success("Welcome back, " + data.user.first_name + "!");
       navigate(ROUTES.HOME);
     },
     onError: (err) => {
@@ -58,33 +50,29 @@ export function useLogin() {
   });
 }
 
-// ── useRegister ────────────────────────────────────────────────────────────────
+// useRegister
 export function useRegister() {
   const navigate = useNavigate();
-
   return useMutation({
     mutationFn: (userData) => authApi.register(userData),
-    onSuccess: ({ data }) => {
-      toast.success("Account created! Please check your email to verify.");
+    onSuccess: () => {
+      toast.success("Account created! Please sign in.");
       navigate(ROUTES.LOGIN, { state: { justRegistered: true } });
     },
     onError: (err) => {
-      const error = getApiError(err);
-      toast.error(error);
+      toast.error(getApiError(err));
     },
   });
 }
 
-// ── useLogout ──────────────────────────────────────────────────────────────────
+// useLogout
 export function useLogout() {
-  const navigate      = useNavigate();
-  const logout        = useAuthStore((s) => s.logout);
-  const refreshToken  = useAuthStore((s) => s.refreshToken);
-  const queryClient   = useQueryClient();
-
+  const navigate = useNavigate();
+  const logout = useAuthStore((s) => s.logout);
+  const refreshToken = useAuthStore((s) => s.refreshToken);
+  const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: () =>
-      authApi.logout({ refresh: refreshToken }).catch(() => {}), // silent fail
+    mutationFn: () => authApi.logout({ refresh: refreshToken }).catch(() => {}),
     onSettled: () => {
       logout();
       queryClient.clear();
@@ -94,40 +82,34 @@ export function useLogout() {
   });
 }
 
-// ── useSendOtp ─────────────────────────────────────────────────────────────────
+// useSendOtp
+// Caller MUST pass onSuccess/onError in mutate() second arg to handle UI
+// sendOtp.mutate({ identifier, purpose }, { onSuccess: () => {}, onError: () => {} })
 export function useSendOtp() {
   return useMutation({
     mutationFn: ({ identifier, purpose }) =>
       authApi.sendOtp({ identifier, purpose }),
-    onSuccess: () => {
-      toast.success("OTP sent! Check your phone or email.");
-    },
-    onError: (err) => {
-      toast.error(getApiError(err));
-    },
   });
 }
 
-// ── useVerifyOtp ───────────────────────────────────────────────────────────────
-export function useVerifyOtp({ onSuccess } = {}) {
+// useVerifyOtp
+// For otp_login: auto logs in. For phone/email verify: caller handles via mutate onSuccess
+// verifyOtp.mutate({ identifier, code, purpose }, { onSuccess: () => {}, onError: () => {} })
+export function useVerifyOtp() {
   const setTokens = useAuthStore((s) => s.setTokens);
-  const setUser   = useAuthStore((s) => s.setUser);
-  const navigate  = useNavigate();
-
+  const setUser = useAuthStore((s) => s.setUser);
+  const navigate = useNavigate();
   return useMutation({
     mutationFn: ({ identifier, code, purpose }) =>
       authApi.verifyOtp({ identifier, code, purpose }),
     onSuccess: ({ data }, variables) => {
-      // OTP login returns tokens
       if (variables.purpose === "otp_login" && data.access) {
         setTokens(data.access, data.refresh);
         setUser(data.user);
-        toast.success(`Welcome, ${data.user.first_name}!`);
+        toast.success("Welcome, " + data.user.first_name + "!");
         navigate(ROUTES.HOME);
-      } else {
-        toast.success("Verified successfully!");
-        onSuccess?.(data, variables);
       }
+      // all other purposes: caller handles onSuccess
     },
     onError: (err) => {
       toast.error(getApiError(err));
@@ -135,16 +117,14 @@ export function useVerifyOtp({ onSuccess } = {}) {
   });
 }
 
-// ── useForgotPassword ──────────────────────────────────────────────────────────
+// useForgotPassword
 export function useForgotPassword() {
   const navigate = useNavigate();
-
   return useMutation({
     mutationFn: ({ email }) => authApi.forgotPassword({ email }),
     onSuccess: (_, variables) => {
-      navigate("/auth/reset-password", {
-        state: { email: variables.email },
-      });
+      toast.success("Recovery code sent! Check your email.");
+      navigate("/auth/reset-password", { state: { email: variables.email } });
     },
     onError: (err) => {
       toast.error(getApiError(err));
@@ -152,15 +132,14 @@ export function useForgotPassword() {
   });
 }
 
-// ── useResetPassword ───────────────────────────────────────────────────────────
+// useResetPassword
 export function useResetPassword() {
   const navigate = useNavigate();
-
   return useMutation({
     mutationFn: ({ email, otp, password, password2 }) =>
       authApi.resetPassword({ email, otp, password, password2 }),
     onSuccess: () => {
-      toast.success("Password reset! Please sign in with your new password.");
+      toast.success("Password reset! Please sign in.");
       navigate(ROUTES.LOGIN);
     },
     onError: (err) => {
@@ -169,11 +148,10 @@ export function useResetPassword() {
   });
 }
 
-// ── useChangePassword ──────────────────────────────────────────────────────────
+// useChangePassword
 export function useChangePassword() {
-  const logout   = useAuthStore((s) => s.logout);
+  const logout = useAuthStore((s) => s.logout);
   const navigate = useNavigate();
-
   return useMutation({
     mutationFn: (data) => authApi.changePassword(data),
     onSuccess: () => {

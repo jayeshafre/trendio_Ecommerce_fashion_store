@@ -39,6 +39,7 @@ THIRD_PARTY_APPS = [
     "django_filters",
     "drf_spectacular",
     "storages",
+    "rest_framework_simplejwt.token_blacklist",
 ]
 
 LOCAL_APPS = [
@@ -93,6 +94,10 @@ DATABASES["default"]["ATOMIC_REQUESTS"] = True  # wrap each request in a transac
 
 # ─── Auth User Model ───────────────────────────────────────────────────────────
 AUTH_USER_MODEL = "users.User"
+
+AUTHENTICATION_BACKENDS = [
+    "django.contrib.auth.backends.ModelBackend",
+]
 
 # ─── Password Validation ───────────────────────────────────────────────────────
 AUTH_PASSWORD_VALIDATORS = [

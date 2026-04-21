@@ -1,17 +1,14 @@
 """
 Auth serializers — production-grade validation.
-
-All user-facing errors are explicit and human-readable.
 """
-from django.contrib.auth import get_user_model
+from django.contrib.auth import get_user_model, authenticate
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
-from rest_framework_simplejwt.tokens import RefreshToken
 
 User = get_user_model()
 
 
-# ── Register ───────────────────────────────────────────────────────────────────
+# ── Register ──────────────────────────────────────────────────────────────────
 class RegisterSerializer(serializers.ModelSerializer):
     password  = serializers.CharField(write_only=True, min_length=8, validators=[validate_password])
     password2 = serializers.CharField(write_only=True, label="Confirm password")
@@ -40,43 +37,80 @@ class RegisterSerializer(serializers.ModelSerializer):
         return attrs
 
     def create(self, validated_data):
-        user = User.objects.create_user(**validated_data)
-        return user
+        return User.objects.create_user(**validated_data)
 
 
-# ── Login (Email + Password) ───────────────────────────────────────────────────
+# ── Login ─────────────────────────────────────────────────────────────────────
 class LoginSerializer(serializers.Serializer):
-    email    = serializers.EmailField()
-    password = serializers.CharField(write_only=True)
+    """
+    Accepts EITHER email or phone number in the `identifier` field.
+    Also accepts `email` directly for backwards compatibility with frontend.
+
+    Flow:
+      1. Client sends { identifier: "9876543210", password: "..." }
+         OR { identifier: "user@email.com", password: "..." }
+         OR { email: "user@email.com", password: "..." }   ← legacy
+      2. We detect whether it's a phone or email
+      3. Look up the user by that field
+      4. Call authenticate() with their email (Django's USERNAME_FIELD)
+    """
+    # Accept either field name — frontend can send "identifier" or "email"
+    identifier = serializers.CharField(required=False, allow_blank=True)
+    email      = serializers.EmailField(required=False, allow_blank=True)
+    password   = serializers.CharField(write_only=True)
 
     def validate(self, attrs):
-        from django.contrib.auth import authenticate
+        # ── Step 1: resolve identifier ────────────────────────────────────────
+        # Accept either "identifier" or legacy "email" field
+        raw = (attrs.get("identifier") or attrs.get("email") or "").strip()
+
+        if not raw:
+            raise serializers.ValidationError(
+                {"identifier": "Please enter your email or mobile number."}
+            )
+
+        password = attrs.get("password", "")
+
+        # ── Step 2: detect phone vs email ─────────────────────────────────────
+        is_phone = raw.isdigit() or (raw.startswith("+") and raw[1:].isdigit())
+
+        if is_phone:
+            # Strip leading country code if user types +91XXXXXXXXXX
+            phone = raw.lstrip("+")
+            if phone.startswith("91") and len(phone) == 12:
+                phone = phone[2:]   # strip 91, keep 10-digit number
+
+            # Look up user by phone
+            try:
+                user_obj = User.objects.get(phone=phone)
+            except User.DoesNotExist:
+                raise serializers.ValidationError(
+                    {"identifier": "No account found with this mobile number."}
+                )
+            # Authenticate using their email (Django USERNAME_FIELD = email)
+            login_email = user_obj.email
+        else:
+            login_email = raw.lower()
+
+        # ── Step 3: authenticate ──────────────────────────────────────────────
         user = authenticate(
             request=self.context.get("request"),
-            username=attrs["email"].lower(),
-            password=attrs["password"],
+            username=login_email,
+            password=password,
         )
+
         if not user:
             raise serializers.ValidationError(
-                {"detail": "Invalid email or password. Please try again."}
+                {"detail": "Invalid credentials. Please try again."}
             )
+
         if not user.is_active:
             raise serializers.ValidationError(
                 {"detail": "Your account has been deactivated. Contact support."}
             )
+
         attrs["user"] = user
         return attrs
-
-
-# ── Token response ─────────────────────────────────────────────────────────────
-class TokenResponseSerializer(serializers.Serializer):
-    """Returned after successful login/OTP-verify."""
-    access  = serializers.CharField()
-    refresh = serializers.CharField()
-    user    = serializers.SerializerMethodField()
-
-    def get_user(self, obj):
-        return UserMeSerializer(obj["user"]).data
 
 
 # ── Me (current user) ─────────────────────────────────────────────────────────
@@ -95,6 +129,16 @@ class UserMeSerializer(serializers.ModelSerializer):
         return obj.get_full_name()
 
 
+# ── Token response ────────────────────────────────────────────────────────────
+class TokenResponseSerializer(serializers.Serializer):
+    access  = serializers.CharField()
+    refresh = serializers.CharField()
+    user    = serializers.SerializerMethodField()
+
+    def get_user(self, obj):
+        return UserMeSerializer(obj["user"]).data
+
+
 # ── OTP Send ──────────────────────────────────────────────────────────────────
 class OTPSendSerializer(serializers.Serializer):
     identifier = serializers.CharField(help_text="Phone number or email address")
@@ -103,7 +147,7 @@ class OTPSendSerializer(serializers.Serializer):
     )
 
     def validate_identifier(self, value):
-        return value.strip().lower()
+        return value.strip()
 
 
 # ── OTP Verify ────────────────────────────────────────────────────────────────
@@ -130,7 +174,6 @@ class ForgotPasswordSerializer(serializers.Serializer):
     email = serializers.EmailField()
 
     def validate_email(self, value):
-        # Silently accept even if email doesn't exist (security: no user enumeration)
         return value.lower()
 
 
@@ -147,7 +190,7 @@ class ResetPasswordSerializer(serializers.Serializer):
         return attrs
 
 
-# ── Change Password (authenticated) ───────────────────────────────────────────
+# ── Change Password (authenticated) ──────────────────────────────────────────
 class ChangePasswordSerializer(serializers.Serializer):
     current_password = serializers.CharField(write_only=True)
     new_password     = serializers.CharField(write_only=True, min_length=8, validators=[validate_password])

@@ -1,26 +1,17 @@
 /**
- * ForgotPasswordPage — Trendio
+ * ForgotPasswordPage — Trendio (FIXED)
  *
- * Step 1 of 3 — matches image 5 exactly:
- * • Lock icon in beige circle
- * • "STEP 1 OF 3" label
- * • "Forgot your password?" serif heading
- * • Description text with "Trendio" highlighted
- * • "REGISTERED EMAIL" input label
- * • Email input (pre-filled if passed via state)
- * • Helper text about 6-digit code
- * • "SEND RECOVERY CODE" warm-sand button
- * • "TRY A DIFFERENT EMAIL" outline button
- * • Divider + help text with links
- *
- * On success → navigate to /auth/reset-password with email in state
+ * Was using a fake setTimeout. Now calls:
+ *   POST /api/v1/auth/password/forgot/
+ * On success: useForgotPassword hook navigates to /auth/reset-password
+ * with email passed via router state.
  */
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Lock } from "lucide-react";
+import { useForgotPassword } from "@hooks/useAuth";
 import { ROUTES } from "@constants";
 
 const schema = z.object({
@@ -28,23 +19,18 @@ const schema = z.object({
 });
 
 export default function ForgotPasswordPage() {
-  const navigate = useNavigate();
-  const [sent, setSent] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const forgotMutation = useForgotPassword();
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm({
-    resolver: zodResolver(schema),
-  });
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm({ resolver: zodResolver(schema) });
 
-  const onSubmit = async (data) => {
-    setLoading(true);
-    try {
-      // TODO: await authApi.forgotPassword({ email: data.email })
-      await new Promise((r) => setTimeout(r, 800)); // simulate API
-      navigate("/auth/reset-password", { state: { email: data.email } });
-    } finally {
-      setLoading(false);
-    }
+  const onSubmit = (data) => {
+    forgotMutation.mutate({ email: data.email });
+    // On success: hook auto-navigates to /auth/reset-password with email in state
   };
 
   return (
@@ -54,7 +40,7 @@ export default function ForgotPasswordPage() {
     >
       <div className="w-full max-w-[420px]">
 
-        {/* ── Icon ─────────────────────────────────────────── */}
+        {/* Icon */}
         <div className="mb-6 flex justify-center">
           <div
             className="flex h-16 w-16 items-center justify-center rounded-full"
@@ -64,7 +50,7 @@ export default function ForgotPasswordPage() {
           </div>
         </div>
 
-        {/* ── Step label ───────────────────────────────────── */}
+        {/* Step label */}
         <p
           className="mb-3 text-center text-[10px] font-semibold tracking-[0.2em]"
           style={{ color: "#7A6E67" }}
@@ -72,7 +58,7 @@ export default function ForgotPasswordPage() {
           STEP 1 OF 3
         </p>
 
-        {/* ── Heading ──────────────────────────────────────── */}
+        {/* Heading */}
         <h1
           className="mb-3 text-center text-[2rem] font-bold leading-tight"
           style={{ fontFamily: "'Playfair Display', serif", color: "#2B2B2B" }}
@@ -80,8 +66,11 @@ export default function ForgotPasswordPage() {
           Forgot your password?
         </h1>
 
-        {/* ── Description ──────────────────────────────────── */}
-        <p className="mb-8 text-center text-sm leading-relaxed" style={{ color: "#7A6E67" }}>
+        {/* Description */}
+        <p
+          className="mb-8 text-center text-sm leading-relaxed"
+          style={{ color: "#7A6E67" }}
+        >
           No need to worry. Enter the email address linked to your{" "}
           <span style={{ color: "#C2A98A", fontStyle: "italic" }}>Trendio</span>{" "}
           account and we'll send a recovery code.
@@ -89,7 +78,7 @@ export default function ForgotPasswordPage() {
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
 
-          {/* Email field */}
+          {/* Email */}
           <div>
             <label
               className="mb-1.5 block text-[10px] font-semibold tracking-widest"
@@ -115,20 +104,20 @@ export default function ForgotPasswordPage() {
               </p>
             ) : (
               <p className="mt-1.5 text-xs leading-relaxed" style={{ color: "#7A6E67" }}>
-                We'll send a 6-digit code to this address. Check your spam folder if it
-                doesn't arrive within 2 minutes.
+                We'll send a 6-digit code to this address. Check your spam
+                folder if it doesn't arrive within 2 minutes.
               </p>
             )}
           </div>
 
-          {/* Send Recovery Code button */}
+          {/* Send Recovery Code */}
           <button
             type="submit"
-            disabled={loading}
+            disabled={forgotMutation.isPending}
             className="w-full rounded-xl py-3.5 text-xs font-bold tracking-[0.18em] text-white transition-all duration-200 hover:opacity-90 active:scale-[0.98] disabled:opacity-60"
             style={{ backgroundColor: "#C2A98A" }}
           >
-            {loading ? "SENDING CODE…" : "SEND RECOVERY CODE"}
+            {forgotMutation.isPending ? "SENDING CODE…" : "SEND RECOVERY CODE"}
           </button>
 
           {/* Try different email */}
@@ -142,7 +131,7 @@ export default function ForgotPasswordPage() {
           </button>
         </form>
 
-        {/* ── Footer help ──────────────────────────────────── */}
+        {/* Footer help */}
         <div className="mt-8">
           <div className="mb-4 border-t" style={{ borderColor: "#E5DCD3" }} />
           <p className="text-center text-xs leading-relaxed" style={{ color: "#7A6E67" }}>
