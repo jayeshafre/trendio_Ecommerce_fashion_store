@@ -16,22 +16,25 @@ from drf_spectacular.views import (
 urlpatterns = [
     # ─── Django Admin ──────────────────────────────────────
     path("admin/", admin.site.urls),
+
     # ─── API v1 ────────────────────────────────────────────
-     path("api/v1/auth/", include("apps.users.urls", namespace="users")),
-    # path("api/v1/products/", include("apps.products.urls", namespace="products")),
-    # path("api/v1/cart/", include("apps.cart.urls", namespace="cart")),
-    # path("api/v1/orders/", include("apps.orders.urls", namespace="orders")),
+    path("api/v1/auth/",     include("apps.users.urls", namespace="users")),
+    path("api/v1/", include("apps.products.urls", namespace="products")),
+
+    # Future modules (keep like this)
+    # path("api/v1/cart/",     include("apps.cart.urls", namespace="cart")),
+    # path("api/v1/orders/",   include("apps.orders.urls", namespace="orders")),
     # path("api/v1/payments/", include("apps.payments.urls", namespace="payments")),
-    # path("api/v1/reviews/", include("apps.reviews.urls", namespace="reviews")),
-    # # ─── API Docs ──────────────────────────────────────────
-    # path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
-    # path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
-    # path("api/redoc/", SpectacularRedocView.as_view(url_name="schema"), name="redoc"),
+
+    # ─── API Docs ──────────────────────────────────────────
+    path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
+    path("api/docs/",   SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
+    path("api/redoc/",  SpectacularRedocView.as_view(url_name="schema"), name="redoc"),
 ]
 
-# Serve media files in development
+# ─── Static & Media (dev only) ─────────────────────────────
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
-    import debug_toolbar
 
+    import debug_toolbar
     urlpatterns = [path("__debug__/", include(debug_toolbar.urls))] + urlpatterns

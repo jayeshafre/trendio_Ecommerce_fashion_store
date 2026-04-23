@@ -240,9 +240,9 @@ export default function RegisterPage() {
   return (
     <div
       className="flex min-h-screen items-center justify-center px-4 py-12"
-      style={{ backgroundColor: "#F8F5F2" }}
+      style={{ backgroundColor: "#FFFFFF" }}
     >
-      <div className="w-full max-w-sm">
+      <div className="w-full max-w-sm rounded-2xl border bg-white p-8 shadow-lg" style={{ borderColor: "#E5DCD3" }}>
 
         {/* Header */}
         <p className="mb-0.5 text-[10px] font-semibold tracking-[0.18em]" style={{ color: "#7A6E67" }}>

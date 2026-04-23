@@ -27,6 +27,7 @@ const AdminDashboard     = lazy(() => import("@pages/admin/AdminDashboard"));
 const AdminProducts      = lazy(() => import("@pages/admin/AdminProducts"));
 const AdminOrders        = lazy(() => import("@pages/admin/AdminOrders"));
 const AdminUsers         = lazy(() => import("@pages/admin/AdminUsers"));
+const BulkUploadPage     = lazy(() => import("@pages/admin/BulkUploadPage"));
 
 const NotFoundPage       = lazy(() => import("@pages/error/NotFoundPage"));
 
@@ -43,6 +44,7 @@ export const router = createBrowserRouter([
       { path: "shop",          element: <S><ShopPage /></S> },
       { path: "product/:slug", element: <S><ProductDetailPage /></S> },
       { path: "search",        element: <S><ShopPage /></S> },
+      
 
       // Guest only (redirect to home if already logged in)
       {
@@ -83,6 +85,7 @@ export const router = createBrowserRouter([
           { path: "products", element: <S><AdminProducts /></S> },
           { path: "orders",   element: <S><AdminOrders /></S> },
           { path: "users",    element: <S><AdminUsers /></S> },
+          { path: "bulk-upload", element: <S><BulkUploadPage /></S> },
         ],
       },
     ],

@@ -36,9 +36,9 @@ export default function ForgotPasswordPage() {
   return (
     <div
       className="flex min-h-screen items-center justify-center px-4 py-12"
-      style={{ backgroundColor: "#F8F5F2" }}
+      style={{ backgroundColor: "#FFFFFF" }}
     >
-      <div className="w-full max-w-[420px]">
+     <div className="w-full max-w-[420px] rounded-2xl border bg-white p-8 shadow-lg" style={{ borderColor: "#E5DCD3" }}>
 
         {/* Icon */}
         <div className="mb-6 flex justify-center">

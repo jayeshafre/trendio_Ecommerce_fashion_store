@@ -110,9 +110,9 @@ export default function LoginPage() {
   return (
     <div
       className="flex min-h-screen items-center justify-center px-4 py-12"
-      style={{ backgroundColor: "#F8F5F2" }}
+      style={{ backgroundColor: "#FFFFFF" }}
     >
-      <div className="w-full max-w-sm">
+     <div className="w-full max-w-sm rounded-2xl border bg-white p-8 shadow-lg" style={{ borderColor: "#E5DCD3" }}>
 
         {/* Heading */}
         <h1

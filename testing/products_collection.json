@@ -1,0 +1,787 @@
+{
+  "info": {
+    "name": "Trendio — Products Module",
+    "_postman_id": "trendio-products-v1",
+    "description": "Complete products API test suite.\n\n--- TESTING ORDER ---\n1. Admin Login (saves token)\n2. Create Category → Create Product → Add Images → Add Variants\n3. Public: List Products, Filter, Search, Detail\n4. Update + Delete flows\n\n--- SETUP ---\nActivate 'Trendio — Local Dev' environment before running.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+
+  "item": [
+
+    {
+      "name": "🔐 Setup — Admin Login",
+      "item": [
+        {
+          "name": "Admin Login (saves token)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.environment.set('access_token',  json.access);",
+                  "pm.environment.set('refresh_token', json.refresh);",
+                  "console.log('Admin token saved.');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifier\": \"{{admin_email}}\",\n  \"password\":   \"{{admin_password}}\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/auth/login/", "host": ["{{base_url}}"], "path": ["auth","login",""] },
+            "description": "Login as admin. Auto-saves access_token. Make sure you created a superuser: python manage.py createsuperuser"
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "📁 Categories",
+      "item": [
+
+        {
+          "name": "List All Categories",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Returns array', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.results).to.be.an('array');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/categories/", "host": ["{{base_url}}"], "path": ["categories",""] },
+            "description": "Public — no auth needed."
+          }
+        },
+
+        {
+          "name": "Create Category — Men",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.environment.set('category_slug', json.slug);",
+                  "pm.environment.set('category_id',   json.id);",
+                  "console.log('Category slug saved:', json.slug);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\":      \"Men\",\n  \"is_active\": true\n}"
+            },
+            "url": { "raw": "{{base_url}}/categories/", "host": ["{{base_url}}"], "path": ["categories",""] }
+          }
+        },
+
+        {
+          "name": "Create Category — Shirts (child of Men)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.environment.set('shirts_category_id', pm.response.json().id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\":      \"Shirts\",\n  \"parent\":    \"{{category_id}}\",\n  \"is_active\": true\n}"
+            },
+            "url": { "raw": "{{base_url}}/categories/", "host": ["{{base_url}}"], "path": ["categories",""] }
+          }
+        },
+
+        {
+          "name": "Get Category Detail",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Has children array', () => {",
+                  "  pm.expect(pm.response.json()).to.have.property('children');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/categories/{{category_slug}}/", "host": ["{{base_url}}"], "path": ["categories","{{category_slug}}",""] }
+          }
+        },
+
+        {
+          "name": "Update Category",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Men's Wear\"\n}" },
+            "url": { "raw": "{{base_url}}/categories/{{category_slug}}/", "host": ["{{base_url}}"], "path": ["categories","{{category_slug}}",""] }
+          }
+        },
+
+        {
+          "name": "Create Category — No Auth (expect 403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": ["pm.test('Status 401 or 403', () => { pm.expect(pm.response.code).to.be.oneOf([401,403]); });"]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Unauthorized\"\n}" },
+            "url": { "raw": "{{base_url}}/categories/", "host": ["{{base_url}}"], "path": ["categories",""] }
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "🛍️ Products — Admin CRUD",
+      "item": [
+
+        {
+          "name": "Create Product",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.environment.set('product_slug', json.slug);",
+                  "pm.environment.set('product_id',   json.id);",
+                  "console.log('Product slug saved:', json.slug);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\":       \"Classic Oxford Shirt\",\n  \"description\": \"Premium cotton Oxford shirt perfect for formal and casual occasions.\",\n  \"brand\":       \"Trendio Essentials\",\n  \"category\":    \"{{shirts_category_id}}\",\n  \"base_price\":  1299,\n  \"sale_price\":  999,\n  \"is_active\":   true\n}"
+            },
+            "url": { "raw": "{{base_url}}/products/", "host": ["{{base_url}}"], "path": ["products",""] }
+          }
+        },
+
+        {
+          "name": "Create Product — Sale Price ≥ Base (expect 400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": ["pm.test('Status 400', () => pm.response.to.have.status(400));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\":      \"Bad Price Product\",\n  \"brand\":      \"Test\",\n  \"category\":   \"{{shirts_category_id}}\",\n  \"base_price\": 500,\n  \"sale_price\": 600\n}"
+            },
+            "url": { "raw": "{{base_url}}/products/", "host": ["{{base_url}}"], "path": ["products",""] }
+          }
+        },
+
+        {
+          "name": "Update Product",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sale_price\": 899,\n  \"description\": \"Updated: Premium cotton Oxford shirt for all occasions.\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/products/{{product_slug}}/", "host": ["{{base_url}}"], "path": ["products","{{product_slug}}",""] }
+          }
+        },
+
+        {
+          "name": "Soft Delete Product",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": { "raw": "{{base_url}}/products/{{product_slug}}/", "host": ["{{base_url}}"], "path": ["products","{{product_slug}}",""] },
+            "description": "Sets is_active=False. Product disappears from public listing."
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "🖼️ Product Images",
+      "item": [
+
+        {
+          "name": "Upload Primary Image",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.environment.set('image_id', pm.response.json().id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "image",      "type": "file", "src": "",        "description": "Select any image file from your computer" },
+                { "key": "alt_text",   "type": "text", "value": "Classic Oxford Shirt — Front View" },
+                { "key": "is_primary", "type": "text", "value": "true" },
+                { "key": "order",      "type": "text", "value": "1" }
+              ]
+            },
+            "url": { "raw": "{{base_url}}/products/{{product_slug}}/images/", "host": ["{{base_url}}"], "path": ["products","{{product_slug}}","images",""] },
+            "description": "Upload an image file. Use form-data, not JSON."
+          }
+        },
+
+        {
+          "name": "Upload Second Image",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "image",      "type": "file", "src": "" },
+                { "key": "alt_text",   "type": "text", "value": "Classic Oxford Shirt — Back View" },
+                { "key": "is_primary", "type": "text", "value": "false" },
+                { "key": "order",      "type": "text", "value": "2" }
+              ]
+            },
+            "url": { "raw": "{{base_url}}/products/{{product_slug}}/images/", "host": ["{{base_url}}"], "path": ["products","{{product_slug}}","images",""] }
+          }
+        },
+
+        {
+          "name": "List Product Images",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": { "raw": "{{base_url}}/products/{{product_slug}}/images/", "host": ["{{base_url}}"], "path": ["products","{{product_slug}}","images",""] }
+          }
+        },
+
+        {
+          "name": "Delete Image",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": { "raw": "{{base_url}}/products/{{product_slug}}/images/{{image_id}}/", "host": ["{{base_url}}"], "path": ["products","{{product_slug}}","images","{{image_id}}",""] }
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "🎛️ Product Variants",
+      "item": [
+
+        {
+          "name": "Add Variant — M / Black",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.environment.set('variant_id', pm.response.json().id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"size\":      \"M\",\n  \"color\":     \"Black\",\n  \"color_hex\": \"#000000\",\n  \"sku\":       \"OXF-M-BLK-001\",\n  \"stock\":     25,\n  \"is_active\": true\n}"
+            },
+            "url": { "raw": "{{base_url}}/products/{{product_slug}}/variants/", "host": ["{{base_url}}"], "path": ["products","{{product_slug}}","variants",""] }
+          }
+        },
+
+        {
+          "name": "Add Variant — L / White",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"size\":      \"L\",\n  \"color\":     \"White\",\n  \"color_hex\": \"#FFFFFF\",\n  \"sku\":       \"OXF-L-WHT-001\",\n  \"stock\":     15,\n  \"is_active\": true\n}"
+            },
+            "url": { "raw": "{{base_url}}/products/{{product_slug}}/variants/", "host": ["{{base_url}}"], "path": ["products","{{product_slug}}","variants",""] }
+          }
+        },
+
+        {
+          "name": "Add Variant — Duplicate SKU (expect 400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": ["pm.test('Status 400 for duplicate SKU', () => pm.response.to.have.status(400));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"size\":  \"XL\",\n  \"color\": \"Black\",\n  \"sku\":   \"OXF-M-BLK-001\",\n  \"stock\": 10\n}"
+            },
+            "url": { "raw": "{{base_url}}/products/{{product_slug}}/variants/", "host": ["{{base_url}}"], "path": ["products","{{product_slug}}","variants",""] }
+          }
+        },
+
+        {
+          "name": "List Variants",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/products/{{product_slug}}/variants/", "host": ["{{base_url}}"], "path": ["products","{{product_slug}}","variants",""] }
+          }
+        },
+
+        {
+          "name": "Update Variant Stock",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"stock\": 50\n}" },
+            "url": { "raw": "{{base_url}}/products/{{product_slug}}/variants/{{variant_id}}/", "host": ["{{base_url}}"], "path": ["products","{{product_slug}}","variants","{{variant_id}}",""] }
+          }
+        },
+
+        {
+          "name": "Delete Variant",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": { "raw": "{{base_url}}/products/{{product_slug}}/variants/{{variant_id}}/", "host": ["{{base_url}}"], "path": ["products","{{product_slug}}","variants","{{variant_id}}",""] }
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "🔍 Public — List, Filter, Search",
+      "item": [
+
+        {
+          "name": "List All Products",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Paginated response', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.have.property('count');",
+                  "  pm.expect(json).to.have.property('results');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/products/", "host": ["{{base_url}}"], "path": ["products",""] }
+          }
+        },
+
+        {
+          "name": "Filter by Category",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/products/?category=shirts",
+              "host": ["{{base_url}}"],
+              "path": ["products",""],
+              "query": [{ "key": "category", "value": "shirts" }]
+            }
+          }
+        },
+
+        {
+          "name": "Filter by Price Range",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/products/?min_price=500&max_price=1500",
+              "host": ["{{base_url}}"],
+              "path": ["products",""],
+              "query": [
+                { "key": "min_price", "value": "500" },
+                { "key": "max_price", "value": "1500" }
+              ]
+            }
+          }
+        },
+
+        {
+          "name": "Filter by Size + Color",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/products/?size=M&color=black",
+              "host": ["{{base_url}}"],
+              "path": ["products",""],
+              "query": [
+                { "key": "size",  "value": "M" },
+                { "key": "color", "value": "black" }
+              ]
+            }
+          }
+        },
+
+        {
+          "name": "Filter — In Stock Only",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/products/?in_stock=true",
+              "host": ["{{base_url}}"],
+              "path": ["products",""],
+              "query": [{ "key": "in_stock", "value": "true" }]
+            }
+          }
+        },
+
+        {
+          "name": "Sort by Price Ascending",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/products/?ordering=base_price",
+              "host": ["{{base_url}}"],
+              "path": ["products",""],
+              "query": [{ "key": "ordering", "value": "base_price" }]
+            }
+          }
+        },
+
+        {
+          "name": "Sort by Price Descending",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/products/?ordering=-base_price",
+              "host": ["{{base_url}}"],
+              "path": ["products",""],
+              "query": [{ "key": "ordering", "value": "-base_price" }]
+            }
+          }
+        },
+
+        {
+          "name": "Sort by Newest",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/products/?ordering=-created_at",
+              "host": ["{{base_url}}"],
+              "path": ["products",""],
+              "query": [{ "key": "ordering", "value": "-created_at" }]
+            }
+          }
+        },
+
+        {
+          "name": "Combined Filter — Category + Price + Size",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/products/?category=shirts&min_price=500&max_price=2000&size=M&in_stock=true&ordering=-base_price",
+              "host": ["{{base_url}}"],
+              "path": ["products",""],
+              "query": [
+                { "key": "category",  "value": "shirts" },
+                { "key": "min_price", "value": "500" },
+                { "key": "max_price", "value": "2000" },
+                { "key": "size",      "value": "M" },
+                { "key": "in_stock",  "value": "true" },
+                { "key": "ordering",  "value": "-base_price" }
+              ]
+            }
+          }
+        },
+
+        {
+          "name": "Search Products",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Returns results array', () => pm.expect(pm.response.json().results).to.be.an('array'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/products/search/?q=shirt",
+              "host": ["{{base_url}}"],
+              "path": ["products","search",""],
+              "query": [{ "key": "q", "value": "shirt" }]
+            }
+          }
+        },
+
+        {
+          "name": "Search — Empty Query (returns empty)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Empty results for blank query', () => {",
+                  "  pm.expect(pm.response.json().count).to.equal(0);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/products/search/?q=",
+              "host": ["{{base_url}}"],
+              "path": ["products","search",""],
+              "query": [{ "key": "q", "value": "" }]
+            }
+          }
+        },
+
+        {
+          "name": "Get Product Detail",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Has variants and images', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json).to.have.property('variants');",
+                  "  pm.expect(json).to.have.property('images');",
+                  "  pm.expect(json).to.have.property('effective_price');",
+                  "  pm.expect(json).to.have.property('discount_percent');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/products/{{product_slug}}/", "host": ["{{base_url}}"], "path": ["products","{{product_slug}}",""] }
+          }
+        },
+
+        {
+          "name": "Get Non-Existent Product (expect 404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": ["pm.test('Status 404', () => pm.response.to.have.status(404));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/products/this-product-does-not-exist/", "host": ["{{base_url}}"], "path": ["products","this-product-does-not-exist",""] }
+          }
+        },
+
+        {
+          "name": "Pagination — Page 2",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/products/?page=2",
+              "host": ["{{base_url}}"],
+              "path": ["products",""],
+              "query": [{ "key": "page", "value": "2" }]
+            }
+          }
+        }
+      ]
+    }
+
+  ]
+}
