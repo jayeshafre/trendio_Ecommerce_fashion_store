@@ -1,15 +1,13 @@
 /**
- * VariantSelector — size + color picker on the ProductDetailPage.
+ * VariantSelector — FIXED
  *
- * Props:
- *   variants        → array of ProductVariant objects from API
- *   selectedVariant → currently selected variant (or null)
- *   onSelect        → (variant) => void
+ * Fix 1: Duplicate key error
+ *   Was:  key={size}          → "32" key appears twice if data has whitespace variance
+ *   Now:  key={`size-${i}`}   → index-based key, always unique
+ *   Same fix applied to color swatches: key={`color-${i}`}
  *
- * Logic:
- *   - Extracts unique sizes and colors from variants
- *   - Greys out size/color combos with zero stock
- *   - Selecting a size + color finds the exact matching variant
+ * Fix 2: Better UX messaging
+ *   Shows "Choose size" / "Choose color" hints instead of nothing
  */
 import { useState } from "react";
 
@@ -17,47 +15,48 @@ export default function VariantSelector({ variants = [], selectedVariant, onSele
   const [selectedSize,  setSelectedSize]  = useState(selectedVariant?.size  || "");
   const [selectedColor, setSelectedColor] = useState(selectedVariant?.color || "");
 
-  // Unique sizes across all active variants
+  // ── Unique sizes — deduplicated, trimmed ──────────────────
   const sizes = [...new Set(
-    variants.filter((v) => v.is_active).map((v) => v.size).filter(Boolean)
+    variants
+      .filter((v) => v.is_active && v.size)
+      .map((v) => v.size.trim())
   )];
 
-  // Unique colors
+  // ── Unique colors — deduplicated by color name ────────────
   const colors = [...new Map(
     variants
-      .filter((v) => v.is_active)
-      .filter((v) => v.color)
-      .map((v) => [v.color, { color: v.color, color_hex: v.color_hex }])
+      .filter((v) => v.is_active && v.color)
+      .map((v) => [v.color.trim().toLowerCase(), {
+        color:     v.color.trim(),
+        color_hex: v.color_hex?.trim() || "#ccc",
+      }])
   ).values()];
 
-  // Check if a size is available for currently selected color
-  const isSizeAvailable = (size) => {
-    const matches = variants.filter(
+  // ── Availability checks ───────────────────────────────────
+  const isSizeAvailable = (size) =>
+    variants.some(
       (v) =>
-        v.size === size &&
+        v.size?.trim() === size &&
         v.is_active &&
-        (selectedColor ? v.color === selectedColor : true)
+        v.stock > 0 &&
+        (selectedColor ? v.color?.trim().toLowerCase() === selectedColor.toLowerCase() : true)
     );
-    return matches.some((v) => v.stock > 0);
-  };
 
-  // Check if a color is available for currently selected size
-  const isColorAvailable = (color) => {
-    const matches = variants.filter(
+  const isColorAvailable = (color) =>
+    variants.some(
       (v) =>
-        v.color === color &&
+        v.color?.trim().toLowerCase() === color.toLowerCase() &&
         v.is_active &&
-        (selectedSize ? v.size === selectedSize : true)
+        v.stock > 0 &&
+        (selectedSize ? v.size?.trim() === selectedSize : true)
     );
-    return matches.some((v) => v.stock > 0);
-  };
 
-  // Find and emit the matching variant
+  // ── Resolve and emit matching variant ─────────────────────
   const resolveVariant = (size, color) => {
     const match = variants.find(
       (v) =>
-        v.size === size &&
-        v.color === color &&
+        v.size?.trim()  === size &&
+        v.color?.trim().toLowerCase() === color.toLowerCase() &&
         v.is_active
     );
     onSelect(match || null);
@@ -70,55 +69,49 @@ export default function VariantSelector({ variants = [], selectedVariant, onSele
   };
 
   const handleColorClick = (color) => {
-    const next = selectedColor === color ? "" : color;
+    const next = selectedColor.toLowerCase() === color.toLowerCase() ? "" : color;
     setSelectedColor(next);
     resolveVariant(selectedSize, next);
   };
 
   return (
     <div className="space-y-5">
-      {/* ── Sizes ──────────────────────────────────── */}
+
+      {/* ── Sizes ──────────────────────────────────────────── */}
       {sizes.length > 0 && (
         <div>
           <div className="mb-2.5 flex items-center justify-between">
             <p className="text-[10px] font-bold tracking-widest" style={{ color: "#2B2B2B" }}>
               SIZE
             </p>
-            {selectedSize && (
-              <span className="text-xs" style={{ color: "#C2A98A" }}>
-                {selectedSize}
-              </span>
-            )}
+            <span className="text-xs" style={{ color: "#C2A98A" }}>
+              {selectedSize || "Choose a size"}
+            </span>
           </div>
           <div className="flex flex-wrap gap-2">
-            {sizes.map((size) => {
+            {/* FIX: key uses index, not just size value */}
+            {sizes.map((size, i) => {
               const available = isSizeAvailable(size);
               const active    = selectedSize === size;
               return (
                 <button
-                  key={size}
+                  key={`size-${i}`}
                   type="button"
                   onClick={() => available && handleSizeClick(size)}
                   disabled={!available}
                   className="relative h-10 min-w-[2.5rem] rounded-lg px-3 text-sm font-medium transition-all duration-150"
                   style={
                     active
-                      ? { backgroundColor: "#2B2B2B", color: "#fff", borderColor: "#2B2B2B", border: "1px solid" }
+                      ? { backgroundColor: "#2B2B2B", color: "#fff", border: "1px solid #2B2B2B" }
                       : available
-                      ? { backgroundColor: "#fff", color: "#2B2B2B", border: "1px solid #E5DCD3" }
+                      ? { backgroundColor: "#fff",    color: "#2B2B2B", border: "1px solid #E5DCD3" }
                       : { backgroundColor: "#F8F5F2", color: "#D4CAC4", border: "1px solid #E5DCD3", cursor: "not-allowed" }
                   }
                 >
+                  {/* Strikethrough line for unavailable sizes */}
                   {!available && (
-                    /* Strikethrough line for unavailable */
-                    <span
-                      className="absolute inset-0 flex items-center justify-center"
-                      aria-hidden
-                    >
-                      <span
-                        className="absolute w-full rotate-[-20deg] border-t"
-                        style={{ borderColor: "#D4CAC4" }}
-                      />
+                    <span className="pointer-events-none absolute inset-0 flex items-center justify-center" aria-hidden>
+                      <span className="absolute w-full rotate-[-20deg] border-t" style={{ borderColor: "#D4CAC4" }} />
                     </span>
                   )}
                   {size}
@@ -129,37 +122,36 @@ export default function VariantSelector({ variants = [], selectedVariant, onSele
         </div>
       )}
 
-      {/* ── Colors ─────────────────────────────────── */}
+      {/* ── Colors ─────────────────────────────────────────── */}
       {colors.length > 0 && (
         <div>
           <div className="mb-2.5 flex items-center justify-between">
             <p className="text-[10px] font-bold tracking-widest" style={{ color: "#2B2B2B" }}>
               COLOR
             </p>
-            {selectedColor && (
-              <span className="text-xs" style={{ color: "#C2A98A" }}>
-                {selectedColor}
-              </span>
-            )}
+            <span className="text-xs" style={{ color: "#C2A98A" }}>
+              {selectedColor || "Choose a color"}
+            </span>
           </div>
           <div className="flex flex-wrap gap-2.5">
-            {colors.map(({ color, color_hex }) => {
+            {/* FIX: key uses index, not just color name */}
+            {colors.map(({ color, color_hex }, i) => {
               const available = isColorAvailable(color);
-              const active    = selectedColor === color;
+              const active    = selectedColor.toLowerCase() === color.toLowerCase();
               return (
                 <button
-                  key={color}
+                  key={`color-${i}`}
                   type="button"
                   title={color}
                   onClick={() => available && handleColorClick(color)}
                   disabled={!available}
                   className="h-8 w-8 rounded-full transition-all duration-150"
                   style={{
-                    backgroundColor: color_hex || "#ccc",
-                    border: active ? "2.5px solid #C2A98A" : "1.5px solid #E5DCD3",
-                    boxShadow: active ? "0 0 0 2px #F8F5F2" : "none",
-                    opacity: available ? 1 : 0.35,
-                    cursor: available ? "pointer" : "not-allowed",
+                    backgroundColor: color_hex,
+                    border:      active ? "2.5px solid #C2A98A" : "1.5px solid #E5DCD3",
+                    boxShadow:   active ? "0 0 0 2px #F8F5F2"  : "none",
+                    opacity:     available ? 1 : 0.35,
+                    cursor:      available ? "pointer" : "not-allowed",
                   }}
                 />
               );
@@ -168,14 +160,20 @@ export default function VariantSelector({ variants = [], selectedVariant, onSele
         </div>
       )}
 
-      {/* Stock status */}
+      {/* ── Stock status ────────────────────────────────────── */}
       {selectedVariant && (
-        <p className="text-xs" style={{ color: selectedVariant.stock > 5 ? "#84cc16" : "#D97757" }}>
+        <p className="text-xs" style={{
+          color: selectedVariant.stock > 5
+            ? "#84cc16"
+            : selectedVariant.stock > 0
+            ? "#D97757"
+            : "#ef4444"
+        }}>
           {selectedVariant.stock > 0
             ? selectedVariant.stock > 5
               ? `${selectedVariant.stock} in stock`
               : `Only ${selectedVariant.stock} left!`
-            : "Out of stock"}
+            : "Out of stock for this option"}
         </p>
       )}
     </div>

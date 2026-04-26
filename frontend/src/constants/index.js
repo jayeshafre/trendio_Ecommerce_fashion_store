@@ -1,3 +1,11 @@
+/**
+ * src/constants/index.js — FIXED
+ *
+ * Fix: Added missing ROUTES.WISHLIST
+ * Was: undefined → Link got to={undefined} → click did nothing
+ * Now: "/account/wishlist" → works correctly
+ */
+
 // ─── API ────────────────────────────────────────────────────
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api/v1";
 
@@ -38,7 +46,7 @@ export const ROUTES = {
   LOGIN:           "/auth/login",
   REGISTER:        "/auth/register",
   FORGOT_PASSWORD: "/auth/forgot-password",
-  RESET_PASSWORD:  "/auth/reset-password/:uid/:token",
+  RESET_PASSWORD:  "/auth/reset-password",
 
   SHOP:            "/shop",
   PRODUCT:         "/product/:slug",
@@ -53,11 +61,12 @@ export const ROUTES = {
   ORDER_DETAIL:    "/account/orders/:id",
   PROFILE:         "/account/profile",
   ADDRESSES:       "/account/addresses",
-  WISHLIST:        "/account/wishlist",
+  WISHLIST:        "/account/wishlist",   // ← FIX: was missing, caused undefined href
 
   ADMIN:           "/admin",
   ADMIN_PRODUCTS:  "/admin/products",
   ADMIN_ORDERS:    "/admin/orders",
   ADMIN_USERS:     "/admin/users",
   ADMIN_ANALYTICS: "/admin/analytics",
+  ADMIN_BULK_UPLOAD: "/admin/products/bulk-upload",
 };

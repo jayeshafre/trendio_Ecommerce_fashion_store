@@ -4,7 +4,7 @@ Products Admin — inline variants and images for efficient management.
 from django.contrib import admin
 from django.utils.html import format_html
 from .models import Category, Product, ProductVariant, ProductImage
-
+from .models import BulkUpload
 
 class CategoryInline(admin.TabularInline):
     model  = Category
@@ -70,3 +70,43 @@ class ProductVariantAdmin(admin.ModelAdmin):
     list_display  = ["product", "size", "color", "sku", "stock", "is_active"]
     list_filter   = ["is_active", "size", "color"]
     search_fields = ["sku", "product__title"]
+
+@admin.register(BulkUpload)
+class BulkUploadAdmin(admin.ModelAdmin):
+    list_display  = [
+        "id_short", "created_by", "status_badge",
+        "total_records", "success_count", "failure_count",
+        "has_errors", "created_at",
+    ]
+    list_filter   = ["status", "created_at"]
+    readonly_fields = [
+        "id", "file", "status", "total_records", "processed",
+        "success_count", "failure_count", "error_file",
+        "created_by", "created_at", "completed_at",
+    ]
+    ordering = ["-created_at"]
+ 
+    def id_short(self, obj):
+        return str(obj.id)[:8] + "…"
+    id_short.short_description = "ID"
+ 
+    def status_badge(self, obj):
+        colors = {
+            "uploaded":   "#7A6E67",
+            "processing": "#C2A98A",
+            "completed":  "#84cc16",
+            "failed":     "#D97757",
+        }
+        color = colors.get(obj.status, "#7A6E67")
+        return format_html(
+            '<span style="color:{}; font-weight:600;">{}</span>',
+            color, obj.get_status_display(),
+        )
+    status_badge.short_description = "Status"
+ 
+    def has_errors(self, obj):
+        if obj.error_file:
+            return format_html('<span style="color:#D97757;">⚠ Yes</span>')
+        return format_html('<span style="color:#84cc16;">✓ None</span>')
+    has_errors.short_description = "Errors"
+ 

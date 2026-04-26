@@ -1,20 +1,30 @@
 /**
- * ProductDetailPage — /product/:slug
+ * ProductDetailPage — FIXED
  *
- * Layout:
- *   Left  → image gallery
- *   Right → product info, variant selector, add-to-cart CTA
+ * Fix: Button label logic
+ *   Before: showed "SELECT OPTIONS" when no variant selected — confusing
+ *   After:
+ *     - No variants at all       → "ADD TO BAG" (works immediately)
+ *     - Has variants, none chosen → "SELECT SIZE & COLOR" (clear instruction)
+ *     - Has variants, chosen     → "ADD TO BAG"
+ *     - Out of stock             → "OUT OF STOCK" (disabled)
  *
- * Cart integration is stubbed (toast only) — will be wired in Cart module.
+ * Fix: Heart (wishlist) button now navigates to login if not authenticated
+ *   instead of silently doing nothing
  */
 import { useState } from "react";
-import { useParams, Link } from "react-router-dom";
-import { ShoppingBag, Heart, Share2, ChevronRight, Minus, Plus, RotateCcw, Shield } from "lucide-react";
+import { useParams, Link, useNavigate } from "react-router-dom";
+import {
+  ShoppingBag, Heart, Share2, ChevronRight,
+  Minus, Plus, RotateCcw, Shield,
+} from "lucide-react";
 import toast from "react-hot-toast";
 import { useProduct } from "@hooks/useProducts";
+import { useAuthStore } from "@store";
 import ProductImageGallery from "@components/product/ProductImageGallery";
 import VariantSelector from "@components/product/VariantSelector";
 import { formatCurrency } from "@utils";
+import { ROUTES } from "@constants";
 
 // ─── Skeleton ─────────────────────────────────────────────────
 function ProductDetailSkeleton() {
@@ -35,11 +45,32 @@ function ProductDetailSkeleton() {
   );
 }
 
+// ── Button label + disabled state helper ─────────────────────
+function getCartButtonState(variants, selectedVariant, isInStock) {
+  if (!isInStock) {
+    return { label: "OUT OF STOCK", disabled: true };
+  }
+  if (variants.length === 0) {
+    // No variants — simple product, add directly
+    return { label: "ADD TO BAG", disabled: false };
+  }
+  if (!selectedVariant) {
+    // Has variants but none selected
+    return { label: "SELECT SIZE & COLOR", disabled: false };
+  }
+  if (selectedVariant.stock === 0) {
+    return { label: "OUT OF STOCK", disabled: true };
+  }
+  return { label: "ADD TO BAG", disabled: false };
+}
+
 export default function ProductDetailPage() {
-  const { slug }                            = useParams();
-  const { data: product, isLoading, error } = useProduct(slug);
+  const { slug }                              = useParams();
+  const navigate                              = useNavigate();
+  const { data: product, isLoading, error }   = useProduct(slug);
   const [selectedVariant, setSelectedVariant] = useState(null);
-  const [qty, setQty]                       = useState(1);
+  const [qty, setQty]                         = useState(1);
+  const isAuthenticated                       = useAuthStore((s) => s.isAuthenticated);
 
   if (isLoading) return <ProductDetailSkeleton />;
 
@@ -69,18 +100,49 @@ export default function ProductDetailPage() {
     is_in_stock, total_stock,
   } = product;
 
-  // If a specific variant is selected, use its price; else product price
   const displayPrice = selectedVariant?.effective_price || effective_price;
   const displayStock = selectedVariant?.stock ?? total_stock;
-  const canAddToCart = is_in_stock && (!variants.length || selectedVariant);
 
+  // ── Button state ─────────────────────────────────────────
+  const { label: cartLabel, disabled: cartDisabled } = getCartButtonState(
+    variants, selectedVariant, is_in_stock
+  );
+
+  // ── Add to cart handler ──────────────────────────────────
   const handleAddToCart = () => {
-    if (variants.length && !selectedVariant) {
-      toast.error("Please select a size and color.");
+    // If has variants and none selected → scroll up to selector with hint
+    if (variants.length > 0 && !selectedVariant) {
+      toast("Please select your size and color first.", { icon: "👆" });
+      document.getElementById("variant-selector")?.scrollIntoView({
+        behavior: "smooth", block: "center",
+      });
       return;
     }
     // TODO: wire up cartStore.addItem in Cart module
-    toast.success(`${qty}× ${title} added to bag!`);
+    toast.success(
+      `${qty}× ${title}${selectedVariant ? ` (${selectedVariant.size} / ${selectedVariant.color})` : ""} added to bag!`
+    );
+  };
+
+  // ── Wishlist handler ─────────────────────────────────────
+  const handleWishlist = () => {
+    if (!isAuthenticated) {
+      toast("Sign in to save to wishlist.", { icon: "❤️" });
+      navigate(ROUTES.LOGIN);
+      return;
+    }
+    // TODO: wire up wishlist in Account module
+    toast.success("Added to wishlist!");
+  };
+
+  // ── Share handler ────────────────────────────────────────
+  const handleShare = async () => {
+    try {
+      await navigator.share({ title, url: window.location.href });
+    } catch {
+      navigator.clipboard.writeText(window.location.href);
+      toast.success("Link copied to clipboard!");
+    }
   };
 
   return (
@@ -116,7 +178,7 @@ export default function ProductDetailPage() {
           {/* Right — Product info */}
           <div className="flex flex-col">
 
-            {/* Brand + title */}
+            {/* Brand */}
             {brand && (
               <p
                 className="mb-1 text-[11px] font-bold tracking-widest"
@@ -125,6 +187,8 @@ export default function ProductDetailPage() {
                 {brand.toUpperCase()}
               </p>
             )}
+
+            {/* Title */}
             <h1
               className="mb-3 text-2xl font-bold leading-tight lg:text-3xl"
               style={{ fontFamily: "'Playfair Display', serif", color: "#2B2B2B" }}
@@ -134,17 +198,11 @@ export default function ProductDetailPage() {
 
             {/* Price */}
             <div className="mb-4 flex items-center gap-3">
-              <span
-                className="text-2xl font-semibold"
-                style={{ color: "#2B2B2B" }}
-              >
+              <span className="text-2xl font-semibold" style={{ color: "#2B2B2B" }}>
                 {formatCurrency(displayPrice)}
               </span>
               {sale_price && (
-                <span
-                  className="text-base line-through"
-                  style={{ color: "#7A6E67" }}
-                >
+                <span className="text-base line-through" style={{ color: "#7A6E67" }}>
                   {formatCurrency(base_price)}
                 </span>
               )}
@@ -166,9 +224,7 @@ export default function ProductDetailPage() {
               />
               <span className="text-xs" style={{ color: "#7A6E67" }}>
                 {is_in_stock
-                  ? displayStock <= 5
-                    ? `Only ${displayStock} left`
-                    : "In Stock"
+                  ? displayStock <= 5 ? `Only ${displayStock} left` : "In Stock"
                   : "Out of Stock"}
               </span>
             </div>
@@ -177,7 +233,7 @@ export default function ProductDetailPage() {
 
             {/* Variant selector */}
             {variants.length > 0 && (
-              <div className="py-5">
+              <div id="variant-selector" className="py-5">
                 <VariantSelector
                   variants={variants}
                   selectedVariant={selectedVariant}
@@ -188,11 +244,14 @@ export default function ProductDetailPage() {
 
             {/* Quantity */}
             <div className="mb-5 flex items-center gap-4">
-              <span className="text-[10px] font-bold tracking-widest" style={{ color: "#2B2B2B" }}>
+              <span
+                className="text-[10px] font-bold tracking-widest"
+                style={{ color: "#2B2B2B" }}
+              >
                 QTY
               </span>
               <div
-                className="flex items-center gap-0 overflow-hidden rounded-xl border"
+                className="flex items-center overflow-hidden rounded-xl border"
                 style={{ borderColor: "#E5DCD3" }}
               >
                 <button
@@ -223,24 +282,38 @@ export default function ProductDetailPage() {
               <button
                 type="button"
                 onClick={handleAddToCart}
-                disabled={!canAddToCart}
-                className="flex flex-1 items-center justify-center gap-2.5 rounded-xl py-4 text-xs font-bold tracking-[0.12em] text-white transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
-                style={{ backgroundColor: "#2B2B2B" }}
+                disabled={cartDisabled}
+                className="flex flex-1 items-center justify-center gap-2.5 rounded-xl py-4 text-xs font-bold tracking-[0.12em] text-white transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{
+                  backgroundColor: cartDisabled
+                    ? "#7A6E67"
+                    : cartLabel === "SELECT SIZE & COLOR"
+                    ? "#C2A98A"
+                    : "#2B2B2B",
+                }}
               >
                 <ShoppingBag size={16} />
-                {canAddToCart ? "ADD TO BAG" : variants.length ? "SELECT OPTIONS" : "OUT OF STOCK"}
+                {cartLabel}
               </button>
+
+              {/* Wishlist */}
               <button
                 type="button"
-                className="flex h-14 w-14 items-center justify-center rounded-xl border transition-all hover:border-[#C2A98A]"
+                onClick={handleWishlist}
+                className="flex h-14 w-14 items-center justify-center rounded-xl border transition-all hover:border-[#C2A98A] hover:bg-[#FDF8F4]"
                 style={{ borderColor: "#E5DCD3" }}
+                title="Add to wishlist"
               >
                 <Heart size={18} style={{ color: "#2B2B2B" }} strokeWidth={1.5} />
               </button>
+
+              {/* Share */}
               <button
                 type="button"
+                onClick={handleShare}
                 className="flex h-14 w-14 items-center justify-center rounded-xl border transition-all hover:border-[#C2A98A]"
                 style={{ borderColor: "#E5DCD3" }}
+                title="Share this product"
               >
                 <Share2 size={16} style={{ color: "#2B2B2B" }} strokeWidth={1.5} />
               </button>
@@ -248,14 +321,18 @@ export default function ProductDetailPage() {
 
             {/* Trust badges */}
             <div
-              className="mb-5 flex gap-4 rounded-xl p-4"
+              className="mb-5 flex gap-6 rounded-xl p-4"
               style={{ backgroundColor: "#EDE3D9" }}
             >
               {[
                 { icon: <RotateCcw size={14} />, label: "30-day returns" },
-                { icon: <Shield size={14} />, label: "Secure checkout" },
+                { icon: <Shield size={14} />,     label: "Secure checkout" },
               ].map(({ icon, label }) => (
-                <div key={label} className="flex items-center gap-2 text-xs" style={{ color: "#7A6E67" }}>
+                <div
+                  key={label}
+                  className="flex items-center gap-2 text-xs"
+                  style={{ color: "#7A6E67" }}
+                >
                   <span style={{ color: "#C2A98A" }}>{icon}</span>
                   {label}
                 </div>
@@ -276,10 +353,7 @@ export default function ProductDetailPage() {
                     style={{ color: "#7A6E67" }}
                   />
                 </summary>
-                <p
-                  className="pb-4 text-sm leading-relaxed"
-                  style={{ color: "#7A6E67" }}
-                >
+                <p className="pb-4 text-sm leading-relaxed" style={{ color: "#7A6E67" }}>
                   {description}
                 </p>
               </details>

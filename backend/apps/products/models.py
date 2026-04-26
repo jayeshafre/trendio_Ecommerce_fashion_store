@@ -169,3 +169,39 @@ class ProductImage(models.Model):
                 product=self.product, is_primary=True
             ).exclude(pk=self.pk).update(is_primary=False)
         super().save(*args, **kwargs)
+
+class BulkUpload(models.Model):
+ 
+    class Status(models.TextChoices):
+        UPLOADED   = "uploaded",   "Uploaded"
+        PROCESSING = "processing", "Processing"
+        COMPLETED  = "completed",  "Completed"
+        FAILED     = "failed",     "Failed"
+ 
+    id             = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    file           = models.FileField(upload_to="csvs/uploads/")
+    status         = models.CharField(max_length=20, choices=Status.choices, default=Status.UPLOADED)
+ 
+    # Progress counters — updated live by Celery task
+    total_records  = models.PositiveIntegerField(default=0)
+    processed      = models.PositiveIntegerField(default=0)
+    success_count  = models.PositiveIntegerField(default=0)
+    failure_count  = models.PositiveIntegerField(default=0)
+ 
+    # Error report — a generated CSV file
+    error_file     = models.FileField(upload_to="csvs/errors/", null=True, blank=True)
+ 
+    created_by     = models.ForeignKey(
+        "users.User", on_delete=models.SET_NULL,
+        null=True, related_name="bulk_uploads"
+    )
+    created_at     = models.DateTimeField(auto_now_add=True)
+    completed_at   = models.DateTimeField(null=True, blank=True)
+ 
+    class Meta:
+        db_table = "bulk_uploads"
+        ordering = ["-created_at"]
+ 
+    def __str__(self):
+        return f"BulkUpload({self.status} | {self.success_count}/{self.total_records})"
+ 

@@ -1,8 +1,8 @@
 {
   "info": {
     "name": "Trendio — Products Module",
-    "_postman_id": "trendio-products-v1",
-    "description": "Complete products API test suite.\n\n--- TESTING ORDER ---\n1. Admin Login (saves token)\n2. Create Category → Create Product → Add Images → Add Variants\n3. Public: List Products, Filter, Search, Detail\n4. Update + Delete flows\n\n--- SETUP ---\nActivate 'Trendio — Local Dev' environment before running.",
+    "_postman_id": "trendio-products-v2",
+    "description": "Complete products API test suite — includes Bulk Upload.\n\n--- TESTING ORDER ---\n1. Admin Login (saves token)\n2. Create Category → Create Product → Add Images → Add Variants\n3. Bulk Upload → Poll Status → Download Errors\n4. Public: List Products, Filter, Search, Detail\n5. Update + Delete flows\n\n--- SETUP ---\nActivate 'Trendio — Local Dev' environment before running.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
 
@@ -230,7 +230,7 @@
         },
 
         {
-          "name": "Create Product — Sale Price ≥ Base (expect 400)",
+          "name": "Create Product — Sale Price >= Base (expect 400)",
           "event": [
             {
               "listen": "test",
@@ -317,18 +317,20 @@
           ],
           "request": {
             "method": "POST",
-            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
             "body": {
               "mode": "formdata",
               "formdata": [
-                { "key": "image",      "type": "file", "src": "",        "description": "Select any image file from your computer" },
+                { "key": "image",      "type": "file", "src": [],        "description": "⚠️ Click the file icon → select any .jpg/.png from your computer" },
                 { "key": "alt_text",   "type": "text", "value": "Classic Oxford Shirt — Front View" },
                 { "key": "is_primary", "type": "text", "value": "true" },
                 { "key": "order",      "type": "text", "value": "1" }
               ]
             },
             "url": { "raw": "{{base_url}}/products/{{product_slug}}/images/", "host": ["{{base_url}}"], "path": ["products","{{product_slug}}","images",""] },
-            "description": "Upload an image file. Use form-data, not JSON."
+            "description": "⚠️ IMPORTANT:\n1. Body → form-data\n2. Key 'image' → click Type dropdown → select File\n3. Choose any .jpg or .png from your computer\n4. Do NOT manually set Content-Type header — Postman sets it automatically"
           }
         },
 
@@ -340,7 +342,7 @@
             "body": {
               "mode": "formdata",
               "formdata": [
-                { "key": "image",      "type": "file", "src": "" },
+                { "key": "image",      "type": "file", "src": [] },
                 { "key": "alt_text",   "type": "text", "value": "Classic Oxford Shirt — Back View" },
                 { "key": "is_primary", "type": "text", "value": "false" },
                 { "key": "order",      "type": "text", "value": "2" }
@@ -500,6 +502,311 @@
     },
 
     {
+      "name": "📦 Bulk Upload",
+      "description": "Upload CSV to create multiple products + variants at once.\n\nOrder:\n1. Upload Clean CSV (gets id → saved as bulk_upload_id)\n2. Poll Status until completed\n3. Upload Error Test CSV → verify error report\n4. Download Error Report\n5. List Past Uploads\n\n⚠️ Celery worker must be running:\n  celery -A config worker --loglevel=info",
+      "item": [
+
+        {
+          "name": "Upload Clean CSV (24 variants, 4 products)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 202 Accepted', () => pm.response.to.have.status(202));",
+                  "const json = pm.response.json();",
+                  "pm.test('Has upload id', () => pm.expect(json).to.have.property('id'));",
+                  "pm.test('Has poll_url', () => pm.expect(json).to.have.property('poll_url'));",
+                  "pm.environment.set('bulk_upload_id', json.id);",
+                  "console.log('Bulk upload started. ID:', json.id);",
+                  "console.log('Poll URL:', json.poll_url);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": [],
+                  "description": "⚠️ SELECT trendio_bulk_test.csv\n\nSteps:\n1. Click the file icon next to this row\n2. Navigate to and select: trendio_bulk_test.csv\n3. Do NOT set Content-Type header manually"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/products/bulk-upload/",
+              "host": ["{{base_url}}"],
+              "path": ["products", "bulk-upload", ""]
+            },
+            "description": "⚠️ CRITICAL — Postman setup:\n\n1. Body tab → select 'form-data'\n2. Key: file\n3. Click the 'Text' dropdown on the right → change to 'File'\n4. Click 'Select Files' → choose trendio_bulk_test.csv\n5. Headers tab → make sure NO Content-Type is set manually\n\nExpected response (HTTP 202):\n{\n  \"id\": \"uuid\",\n  \"status\": \"uploaded\",\n  \"message\": \"Upload received. Processing started in the background.\",\n  \"poll_url\": \"/api/v1/products/bulk-upload/uuid/\"\n}\n\nThe id is auto-saved to bulk_upload_id environment variable."
+          }
+        },
+
+        {
+          "name": "Poll Status — Check Progress",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Has status field', () => pm.expect(json).to.have.property('status'));",
+                  "console.log('--- Bulk Upload Status ---');",
+                  "console.log('Status:    ', json.status);",
+                  "console.log('Total:     ', json.total_records);",
+                  "console.log('Processed: ', json.processed);",
+                  "console.log('Success:   ', json.success_count);",
+                  "console.log('Failed:    ', json.failure_count);",
+                  "if (json.status === 'completed') {",
+                  "  console.log('✅ Upload completed!');",
+                  "  if (json.error_file_url) {",
+                  "    pm.environment.set('error_file_url', json.error_file_url);",
+                  "    console.log('⚠️ Error report:', json.error_file_url);",
+                  "  }",
+                  "} else if (json.status === 'failed') {",
+                  "  console.log('❌ Upload failed');",
+                  "} else {",
+                  "  console.log('⏳ Still processing — run this request again in 2-3 seconds');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/products/bulk-upload/{{bulk_upload_id}}/",
+              "host": ["{{base_url}}"],
+              "path": ["products", "bulk-upload", "{{bulk_upload_id}}", ""]
+            },
+            "description": "Poll this every 2-3 seconds until status = 'completed' or 'failed'.\n\nExpected final response for clean CSV:\n{\n  \"status\": \"completed\",\n  \"total_records\": 24,\n  \"processed\": 4,\n  \"success_count\": 24,\n  \"failure_count\": 0,\n  \"error_file_url\": null\n}\n\nCheck Celery terminal to watch live processing logs."
+          }
+        },
+
+        {
+          "name": "Upload Error Test CSV (expect 3 ok, 4 failed)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 202 Accepted', () => pm.response.to.have.status(202));",
+                  "const json = pm.response.json();",
+                  "pm.environment.set('bulk_upload_id', json.id);",
+                  "console.log('Error test upload started. ID:', json.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": [],
+                  "description": "SELECT trendio_error_test.csv\nThis file has 4 intentional bad rows to test error reporting."
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/products/bulk-upload/",
+              "host": ["{{base_url}}"],
+              "path": ["products", "bulk-upload", ""]
+            },
+            "description": "Select trendio_error_test.csv.\n\nThis CSV has intentional errors:\n- Row 3: missing title\n- Row 4: sale_price > base_price\n- Row 5: missing SKU\n- Row 7: duplicate SKU\n\nExpected after polling:\n{\n  \"status\": \"completed\",\n  \"success_count\": 3,\n  \"failure_count\": 4,\n  \"error_file_url\": \"http://localhost:8000/media/csvs/errors/..._errors.csv\"\n}"
+          }
+        },
+
+        {
+          "name": "Poll Status — Error Test (wait for completed)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "console.log('Status:', json.status, '| Success:', json.success_count, '| Failed:', json.failure_count);",
+                  "if (json.status === 'completed' && json.error_file_url) {",
+                  "  pm.environment.set('error_file_url', json.error_file_url);",
+                  "  console.log('Error report URL saved:', json.error_file_url);",
+                  "  pm.test('failure_count is 4', () => pm.expect(json.failure_count).to.equal(4));",
+                  "  pm.test('success_count is 3', () => pm.expect(json.success_count).to.equal(3));",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/products/bulk-upload/{{bulk_upload_id}}/",
+              "host": ["{{base_url}}"],
+              "path": ["products", "bulk-upload", "{{bulk_upload_id}}", ""]
+            }
+          }
+        },
+
+        {
+          "name": "Download Error Report CSV",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Content-Type is CSV', () => {",
+                  "  pm.expect(pm.response.headers.get('Content-Type')).to.include('text/csv');",
+                  "});",
+                  "console.log('Error CSV downloaded. Check Postman response body for row-level errors.');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/products/bulk-upload/{{bulk_upload_id}}/errors/",
+              "host": ["{{base_url}}"],
+              "path": ["products", "bulk-upload", "{{bulk_upload_id}}", "errors", ""]
+            },
+            "description": "Downloads the error report as a CSV file.\n\nExpected file contents:\nrow_number,sku,error\n3,—,'title' is required.\n4,BAD-PRICE-001,'sale_price' must be less than 'base_price'.\n5,—,'sku' is required.\n7,GOOD-M-BLU-001,Duplicate SKU 'GOOD-M-BLU-001' — already appears at row 2.\n\nIn Postman: click 'Save Response' → 'Save to a File' to download the CSV."
+          }
+        },
+
+        {
+          "name": "List All Past Uploads",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Returns array of uploads', () => pm.expect(json).to.be.an('array'));",
+                  "console.log('Total uploads:', json.length);",
+                  "json.forEach((u, i) => {",
+                  "  console.log(`Upload ${i+1}: status=${u.status} success=${u.success_count} failed=${u.failure_count}`);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/products/bulk-upload/",
+              "host": ["{{base_url}}"],
+              "path": ["products", "bulk-upload", ""]
+            },
+            "description": "Returns last 20 uploads for the logged-in admin.\nUse this to track history and re-download error reports."
+          }
+        },
+
+        {
+          "name": "Upload — No File (expect 400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error mentions multipart', () => {",
+                  "  const detail = pm.response.json().detail || '';",
+                  "  pm.expect(detail.toLowerCase()).to.include('file');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": {
+              "raw": "{{base_url}}/products/bulk-upload/",
+              "host": ["{{base_url}}"],
+              "path": ["products", "bulk-upload", ""]
+            },
+            "description": "Sending JSON instead of form-data should return 400 with a clear error message."
+          }
+        },
+
+        {
+          "name": "Upload — Non-Admin (expect 403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 401 or 403', () => {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([401, 403]);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "file", "type": "file", "src": [] }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/products/bulk-upload/",
+              "host": ["{{base_url}}"],
+              "path": ["products", "bulk-upload", ""]
+            },
+            "description": "No Authorization header → should return 401. Non-admin token → 403."
+          }
+        }
+      ]
+    },
+
+    {
       "name": "🔍 Public — List, Filter, Search",
       "item": [
 
@@ -515,6 +822,7 @@
                   "  const json = pm.response.json();",
                   "  pm.expect(json).to.have.property('count');",
                   "  pm.expect(json).to.have.property('results');",
+                  "  console.log('Total products:', json.count);",
                   "});"
                 ],
                 "type": "text/javascript"

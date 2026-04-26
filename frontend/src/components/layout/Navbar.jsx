@@ -1,43 +1,69 @@
 /**
- * Navbar — Trendio
- * Matches design: Ivory Luxe theme, Playfair Display logo, spaced nav items,
- * search bar, profile/wishlist/bag icons.
+ * Navbar — FIXED category nav links
+ *
+ * Problem: Category links were hardcoded as /shop?category=shirts etc.
+ * but if the user clicked JEANS then T-SHIRTS, ShopPage didn't update
+ * because the old ShopPage didn't watch for searchParam changes.
+ *
+ * With the new ShopPage fix, these links will work correctly now.
+ * But we also make the nav links smarter:
+ * - Highlight the active category
+ * - Use Link (not <a>) so React Router handles navigation without full reload
+ *
+ * SEARCH FIX:
+ * - Search query is now sent as ?q= which is what ShopPage reads
+ * - Navigate to /shop?q=... (not /search?q=...)
  */
 import { useState, useRef, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ShoppingBag, Heart, User, Search, X, LogOut } from "lucide-react";
+import toast from "react-hot-toast";
 import { useAuthStore, useCartStore } from "@store";
 import { useLogout } from "@hooks/useAuth";
 import { ROUTES } from "@constants";
 
 const NAV_CATEGORIES = [
-  { label: "SHIRTS",   href: "/shop?category=shirts" },
-  { label: "JEANS",    href: "/shop?category=jeans" },
-  { label: "T-SHIRTS", href: "/shop?category=t-shirts" },
-  { label: "TROUSERS", href: "/shop?category=trousers" },
+  { label: "SHIRTS",   slug: "shirts"   },
+  { label: "JEANS",    slug: "jeans"    },
+  { label: "T-SHIRTS", slug: "t-shirts" },
+  { label: "TROUSERS", slug: "trousers" },
 ];
 
 export default function Navbar() {
-  const navigate            = useNavigate();
+  const navigate              = useNavigate();
+  const [searchParams]        = useSearchParams();
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const searchRef           = useRef(null);
-  const isAuthenticated     = useAuthStore((s) => s.isAuthenticated);
-  const totalItems          = useCartStore((s) => s.totalItems);
-  const logoutMutation      = useLogout();
+  const searchRef             = useRef(null);
+  const isAuthenticated       = useAuthStore((s) => s.isAuthenticated);
+  const totalItems            = useCartStore((s) => s.totalItems);
+  const logoutMutation        = useLogout();
 
-  // Focus search input when opened
+  // Active category from URL — highlights the correct nav item
+  const activeCategory = searchParams.get("category") || "";
+
   useEffect(() => {
     if (searchOpen) searchRef.current?.focus();
   }, [searchOpen]);
 
   const handleSearch = (e) => {
     e.preventDefault();
-    if (searchQuery.trim()) {
-      navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+    const q = searchQuery.trim();
+    if (q) {
+      // Navigate to /shop?q=... — ShopPage reads "q" param
+      navigate(`/shop?q=${encodeURIComponent(q)}`);
       setSearchOpen(false);
       setSearchQuery("");
     }
+  };
+
+  const goIfAuth = (destination, label) => {
+    if (!isAuthenticated) {
+      toast(`Sign in to access ${label}.`, { icon: "👤" });
+      navigate(ROUTES.LOGIN);
+      return;
+    }
+    navigate(destination);
   };
 
   return (
@@ -47,39 +73,45 @@ export default function Navbar() {
     >
       <div className="mx-auto flex h-16 max-w-[1400px] items-center gap-6 px-6">
 
-        {/* ── Logo ─────────────────────────────────────────────── */}
+        {/* ── Logo ──────────────────────────────────────── */}
         <Link
           to={ROUTES.HOME}
-          className="mr-6 shrink-0 font-display text-3xl italic"
+          className="mr-4 shrink-0 font-display text-3xl italic"
           style={{ color: "#2B2B2B", fontFamily: "'Playfair Display', serif" }}
         >
           Trendio
         </Link>
 
-        {/* ── Category Navigation ───────────────────────────────── */}
-        <nav className="hidden items-center gap-7 md:flex">
-          {NAV_CATEGORIES.map((cat) => (
-            <Link
-              key={cat.label}
-              to={cat.href}
-              className="text-xs font-semibold tracking-[0.12em] transition-colors duration-150 hover:opacity-60"
-              style={{ color: "#2B2B2B" }}
-            >
-              {cat.label}
-            </Link>
-          ))}
+        {/* ── Category Navigation — FIX: highlight active ─ */}
+        <nav className="hidden items-center gap-6 md:flex">
+          {NAV_CATEGORIES.map((cat) => {
+            const isActive = activeCategory === cat.slug;
+            return (
+              <Link
+                key={cat.slug}
+                to={`/shop?category=${cat.slug}`}
+                className="text-xs font-semibold tracking-[0.12em] transition-all duration-150"
+                style={{
+                  color:          isActive ? "#C2A98A" : "#2B2B2B",
+                  borderBottom:   isActive ? "1.5px solid #C2A98A" : "1.5px solid transparent",
+                  paddingBottom:  "2px",
+                }}
+              >
+                {cat.label}
+              </Link>
+            );
+          })}
         </nav>
 
-        {/* ── Spacer ───────────────────────────────────────────── */}
         <div className="flex-1" />
 
-        {/* ── Search Bar ───────────────────────────────────────── */}
+        {/* ── Search Bar ──────────────────────────────────── */}
         <div className="relative hidden md:block">
           {searchOpen ? (
             <form onSubmit={handleSearch} className="flex items-center">
               <div
                 className="flex items-center gap-2 rounded-full px-4 py-2 text-sm"
-                style={{ backgroundColor: "#EDE3D9", color: "#2B2B2B" }}
+                style={{ backgroundColor: "#EDE3D9" }}
               >
                 <Search size={14} style={{ color: "#C2A98A" }} />
                 <input
@@ -88,7 +120,7 @@ export default function Navbar() {
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search products..."
                   className="w-44 bg-transparent outline-none placeholder:text-gray-400"
-                  style={{ fontSize: "0.8rem" }}
+                  style={{ fontSize: "0.8rem", color: "#2B2B2B" }}
                 />
                 <button
                   type="button"
@@ -101,7 +133,7 @@ export default function Navbar() {
           ) : (
             <button
               onClick={() => setSearchOpen(true)}
-              className="flex items-center gap-2 rounded-full px-4 py-2 text-sm transition-colors duration-150"
+              className="flex items-center gap-2 rounded-full px-4 py-2 text-sm"
               style={{ backgroundColor: "#EDE3D9", color: "#6B6B6B" }}
             >
               <Search size={14} style={{ color: "#C2A98A" }} />
@@ -110,43 +142,40 @@ export default function Navbar() {
           )}
         </div>
 
-        {/* ── Right Icons ───────────────────────────────────────── */}
-        <div
-          className="flex items-center divide-x"
-          style={{ divideColor: "#E5DCD3" }}
-        >
-          {/* Profile */}
-          <Link
-            to={isAuthenticated ? ROUTES.ACCOUNT : ROUTES.LOGIN}
-            className="flex flex-col items-center gap-0.5 px-4 py-1 transition-opacity hover:opacity-60"
+        {/* ── Right Icons ─────────────────────────────────── */}
+        <div className="flex items-center">
+
+          {/* PROFILE */}
+          <button
+            type="button"
+            onClick={() => goIfAuth(ROUTES.ACCOUNT, "your profile")}
+            className="flex flex-col items-center gap-0.5 border-l px-4 py-1 transition-opacity hover:opacity-60"
+            style={{ borderColor: "#E5DCD3" }}
           >
             <User size={18} style={{ color: "#2B2B2B" }} strokeWidth={1.5} />
-            <span
-              className="text-[9px] font-semibold tracking-widest"
-              style={{ color: "#2B2B2B" }}
-            >
+            <span className="text-[9px] font-semibold tracking-widest" style={{ color: "#2B2B2B" }}>
               PROFILE
             </span>
-          </Link>
+          </button>
 
-          {/* Wishlist */}
-          <Link
-            to={isAuthenticated ? ROUTES.WISHLIST : ROUTES.LOGIN}
-            className="flex flex-col items-center gap-0.5 px-4 py-1 transition-opacity hover:opacity-60"
+          {/* WISHLIST */}
+          <button
+            type="button"
+            onClick={() => goIfAuth(ROUTES.WISHLIST, "your wishlist")}
+            className="flex flex-col items-center gap-0.5 border-l px-4 py-1 transition-opacity hover:opacity-60"
+            style={{ borderColor: "#E5DCD3" }}
           >
             <Heart size={18} style={{ color: "#2B2B2B" }} strokeWidth={1.5} />
-            <span
-              className="text-[9px] font-semibold tracking-widest"
-              style={{ color: "#2B2B2B" }}
-            >
+            <span className="text-[9px] font-semibold tracking-widest" style={{ color: "#2B2B2B" }}>
               WISHLIST
             </span>
-          </Link>
+          </button>
 
-          {/* Bag */}
+          {/* BAG */}
           <Link
             to={ROUTES.CART}
-            className="relative flex flex-col items-center gap-0.5 px-4 py-1 transition-opacity hover:opacity-60"
+            className="relative flex flex-col items-center gap-0.5 border-l px-4 py-1 transition-opacity hover:opacity-60"
+            style={{ borderColor: "#E5DCD3" }}
           >
             <div className="relative">
               <ShoppingBag size={18} style={{ color: "#2B2B2B" }} strokeWidth={1.5} />
@@ -159,21 +188,18 @@ export default function Navbar() {
                 </span>
               )}
             </div>
-            <span
-              className="text-[9px] font-semibold tracking-widest"
-              style={{ color: "#2B2B2B" }}
-            >
+            <span className="text-[9px] font-semibold tracking-widest" style={{ color: "#2B2B2B" }}>
               BAG
             </span>
           </Link>
 
-          {/* ── TEMPORARY Logout Button — remove when Profile dropdown is built ── */}
+          {/* TEMPORARY Logout */}
           {isAuthenticated && (
             <button
               onClick={() => logoutMutation.mutate()}
               disabled={logoutMutation.isPending}
-              className="flex flex-col items-center gap-0.5 px-4 py-1 transition-opacity hover:opacity-60 disabled:opacity-40"
-              style={{ borderLeft: "1px solid #E5DCD3" }}
+              className="flex flex-col items-center gap-0.5 border-l px-4 py-1 transition-opacity hover:opacity-60 disabled:opacity-40"
+              style={{ borderColor: "#E5DCD3" }}
               title="Sign out"
             >
               <LogOut
@@ -181,15 +207,11 @@ export default function Navbar() {
                 strokeWidth={1.5}
                 style={{ color: logoutMutation.isPending ? "#C2A98A" : "#D97757" }}
               />
-              <span
-                className="text-[9px] font-semibold tracking-widest"
-                style={{ color: "#D97757" }}
-              >
+              <span className="text-[9px] font-semibold tracking-widest" style={{ color: "#D97757" }}>
                 {logoutMutation.isPending ? "…" : "LOGOUT"}
               </span>
             </button>
           )}
-          {/* ── END TEMPORARY ─────────────────────────────────────────────────── */}
         </div>
       </div>
     </header>
