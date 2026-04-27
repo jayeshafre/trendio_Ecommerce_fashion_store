@@ -40,6 +40,7 @@ THIRD_PARTY_APPS = [
     "drf_spectacular",
     "storages",
     "rest_framework_simplejwt.token_blacklist",
+    "django_extensions",
 ]
 
 LOCAL_APPS = [

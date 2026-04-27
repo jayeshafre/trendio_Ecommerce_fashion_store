@@ -22,7 +22,7 @@ urlpatterns = [
     path("api/v1/", include("apps.products.urls", namespace="products")),
 
     # Future modules (keep like this)
-    # path("api/v1/cart/",     include("apps.cart.urls", namespace="cart")),
+    path("api/v1/cart/",     include("apps.cart.urls", namespace="cart")),
     # path("api/v1/orders/",   include("apps.orders.urls", namespace="orders")),
     # path("api/v1/payments/", include("apps.payments.urls", namespace="payments")),
 

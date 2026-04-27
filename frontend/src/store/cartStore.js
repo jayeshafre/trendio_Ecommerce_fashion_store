@@ -1,29 +1,41 @@
+/**
+ * cartStore.js — Zustand cart store
+ *
+ * Source of truth for cart state across the entire app.
+ * Synced from the API on every mutation — never trust local math.
+ *
+ * Save to: src/store/cartStore.js
+ */
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { immer } from "zustand/middleware/immer";
 
 const useCartStore = create(
   persist(
-    immer((set, get) => ({
-      items: [],
+    (set) => ({
+      // Full cart object from API
+      cart: null,
+
+      // Quick access computed values (derived from cart)
       totalItems: 0,
-      totalPrice: 0,
+      subtotal:   "0.00",
 
-      setCart: (cart) =>
-        set((state) => {
-          state.items      = cart.items || [];
-          state.totalItems = cart.total_items || 0;
-          state.totalPrice = cart.total_price || 0;
-        }),
+      // Set the full cart object returned by the API
+      setCart: (cartData) => {
+        set({
+          cart:       cartData,
+          totalItems: cartData?.item_count  ?? 0,
+          subtotal:   cartData?.subtotal    ?? "0.00",
+        });
+      },
 
-      clearCart: () =>
-        set((state) => {
-          state.items      = [];
-          state.totalItems = 0;
-          state.totalPrice = 0;
-        }),
-    })),
-    { name: "trendio-cart" }
+      // Clear cart data (on logout)
+      clearCart: () => set({ cart: null, totalItems: 0, subtotal: "0.00" }),
+    }),
+    {
+      name: "trendio-cart",
+      // Only persist item count for navbar badge — full cart always fetched fresh
+      partialize: (state) => ({ totalItems: state.totalItems }),
+    }
   )
 );
 
