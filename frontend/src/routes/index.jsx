@@ -1,10 +1,3 @@
-/**
- * src/routes/index.jsx — FIXED
- *
- * Fix 1: Added /account/wishlist route → was missing → caused 404
- * Fix 2: Added /account/profile route
- * Fix 3: Reset password route confirmed as no-param (OTP based)
- */
 import { createBrowserRouter } from "react-router-dom";
 import { lazy, Suspense } from "react";
 import { ProtectedRoute, AdminRoute, GuestRoute } from "./ProtectedRoute";
@@ -27,11 +20,12 @@ const ForgotPasswordPage = lazy(() => import("@pages/auth/ForgotPasswordPage"));
 const ResetPasswordPage  = lazy(() => import("@pages/auth/ResetPasswordPage"));
 
 // ─── Account pages ─────────────────────────────────────────
-const AccountPage        = lazy(() => import("@pages/account/AccountPage"));
-const OrdersPage         = lazy(() => import("@pages/account/OrdersPage"));
-const OrderDetailPage    = lazy(() => import("@pages/account/OrderDetailPage"));
-const ProfilePage        = lazy(() => import("@pages/account/ProfilePage"));
-const WishlistPage       = lazy(() => import("@pages/account/WishlistPage")); // ← FIX: added
+const AccountPage     = lazy(() => import("@pages/account/AccountPage"));
+const OrdersPage      = lazy(() => import("@pages/account/OrdersPage"));
+const OrderDetailPage = lazy(() => import("@pages/account/OrderDetailPage"));
+const ProfilePage     = lazy(() => import("@pages/account/ProfilePage"));
+const WishlistPage    = lazy(() => import("@pages/account/WishlistPage"));
+const AddressesPage   = lazy(() => import("@pages/account/AddressesPage")); // ✅ NEW
 
 // ─── Admin pages ───────────────────────────────────────────
 const AdminDashboard  = lazy(() => import("@pages/admin/AdminDashboard"));
@@ -42,12 +36,13 @@ const AdminUsers      = lazy(() => import("@pages/admin/AdminUsers"));
 // ─── Error page ────────────────────────────────────────────
 const NotFoundPage = lazy(() => import("@pages/error/NotFoundPage"));
 
+// ─── Suspense wrapper ──────────────────────────────────────
 const S = ({ children }) => (
   <Suspense fallback={<PageSpinner />}>{children}</Suspense>
 );
 
 export const router = createBrowserRouter([
-  // ─── Public + Auth Shell ──────────────────────────────────
+  // ─── Public + Main Layout ────────────────────────────────
   {
     path: "/",
     element: <RootLayout />,
@@ -55,10 +50,9 @@ export const router = createBrowserRouter([
       { index: true,           element: <S><HomePage /></S> },
       { path: "shop",          element: <S><ShopPage /></S> },
       { path: "product/:slug", element: <S><ProductDetailPage /></S> },
-      // /search also renders ShopPage (reads ?q= from URL)
       { path: "search",        element: <S><ShopPage /></S> },
 
-      // ── Guest only ──────────────────────────────────────
+      // ─── Guest only routes ──────────────────────────────
       {
         element: <GuestRoute />,
         children: [
@@ -69,26 +63,27 @@ export const router = createBrowserRouter([
         ],
       },
 
-      // ── Protected customer routes ─────────────────────────
+      // ─── Protected routes ───────────────────────────────
       {
         element: <ProtectedRoute />,
         children: [
-          { path: "cart",                 element: <S><CartPage /></S> },
-          { path: "checkout",             element: <S><CheckoutPage /></S> },
-          { path: "order/success/:id",    element: <S><OrderSuccessPage /></S> },
+          { path: "cart",              element: <S><CartPage /></S> },
+          { path: "checkout",          element: <S><CheckoutPage /></S> },
+          { path: "order/success/:id", element: <S><OrderSuccessPage /></S> },
 
           // Account section
-          { path: "account",              element: <S><AccountPage /></S> },
-          { path: "account/orders",       element: <S><OrdersPage /></S> },
-          { path: "account/orders/:id",   element: <S><OrderDetailPage /></S> },
-          { path: "account/profile",      element: <S><ProfilePage /></S> },
-          { path: "account/wishlist",     element: <S><WishlistPage /></S> }, // ← FIX: was missing
+          { path: "account",            element: <S><AccountPage /></S> },
+          { path: "account/orders",     element: <S><OrdersPage /></S> },
+          { path: "account/orders/:id", element: <S><OrderDetailPage /></S> },
+          { path: "account/profile",    element: <S><ProfilePage /></S> },
+          { path: "account/wishlist",   element: <S><WishlistPage /></S> },
+          { path: "account/addresses",  element: <S><AddressesPage /></S> }, // ✅ ADDED
         ],
       },
     ],
   },
 
-  // ─── Admin routes ─────────────────────────────────────────
+  // ─── Admin routes ───────────────────────────────────────
   {
     path: "/admin",
     element: <AdminRoute />,
@@ -105,6 +100,9 @@ export const router = createBrowserRouter([
     ],
   },
 
-  // ─── 404 ──────────────────────────────────────────────────
-  { path: "*", element: <S><NotFoundPage /></S> },
+  // ─── 404 ────────────────────────────────────────────────
+  {
+    path: "*",
+    element: <S><NotFoundPage /></S>,
+  },
 ]);

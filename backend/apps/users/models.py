@@ -7,6 +7,9 @@ Design decisions:
 - Roles: CUSTOMER (default) | ADMIN
 - is_verified tracks email/phone verification status
 - UUID primary key for security (no sequential IDs exposed in URLs)
+
+UserAddress is part of the users module — addresses belong to a user,
+not to an order. Orders snapshot the address at placement time.
 """
 import uuid
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
@@ -46,11 +49,11 @@ class User(AbstractBaseUser, PermissionsMixin):
     objects = UserManager()
 
     class Meta:
-        db_table    = "users"
+        db_table            = "users"
         verbose_name        = "User"
         verbose_name_plural = "Users"
-        ordering    = ["-date_joined"]
-        indexes     = [
+        ordering            = ["-date_joined"]
+        indexes             = [
             models.Index(fields=["email"]),
             models.Index(fields=["phone"]),
             models.Index(fields=["role"]),
@@ -70,10 +73,58 @@ class User(AbstractBaseUser, PermissionsMixin):
         return self.role == self.Role.ADMIN
 
 
+class UserAddress(models.Model):
+    """
+    Saved delivery addresses per user.
+
+    Design decisions:
+    - Belongs to users module (address is a user concept, not an order concept)
+    - Orders SNAPSHOT address fields at placement — they never FK to this model
+    - Only one address can be default per user (enforced in save())
+    - formatted property gives a single-line string for display
+    """
+    id            = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user          = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="addresses"
+    )
+    full_name     = models.CharField(max_length=150)
+    phone         = models.CharField(max_length=15)
+    address_line1 = models.CharField(max_length=255)
+    address_line2 = models.CharField(max_length=255, blank=True)
+    city          = models.CharField(max_length=100)
+    state         = models.CharField(max_length=100)
+    pincode       = models.CharField(max_length=10)
+    is_default    = models.BooleanField(default=False)
+    created_at    = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "user_addresses"
+        ordering = ["-is_default", "-created_at"]
+        indexes  = [models.Index(fields=["user"])]
+
+    def __str__(self):
+        return f"{self.full_name}, {self.city} — {self.user.email}"
+
+    def save(self, *args, **kwargs):
+        # Enforce only one default address per user
+        if self.is_default:
+            UserAddress.objects.filter(
+                user=self.user, is_default=True
+            ).exclude(pk=self.pk).update(is_default=False)
+        super().save(*args, **kwargs)
+
+    @property
+    def formatted(self):
+        parts = [self.address_line1]
+        if self.address_line2:
+            parts.append(self.address_line2)
+        parts += [self.city, self.state, self.pincode]
+        return ", ".join(parts)
+
+
 class OTPCode(models.Model):
     """
     One-time passcode for phone/email verification and OTP login.
-    Soft-deletes via is_used to prevent replay attacks.
     """
 
     class Purpose(models.TextChoices):
@@ -83,7 +134,7 @@ class OTPCode(models.Model):
         PASSWORD_RESET = "password_reset", "Password Reset"
 
     id         = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    identifier = models.CharField(max_length=255, db_index=True)   # email or phone
+    identifier = models.CharField(max_length=255, db_index=True)
     code       = models.CharField(max_length=6)
     purpose    = models.CharField(max_length=30, choices=Purpose.choices)
     attempts   = models.PositiveSmallIntegerField(default=0)
@@ -112,7 +163,6 @@ class OTPCode(models.Model):
 class UserSession(models.Model):
     """
     Tracks active refresh token sessions per device.
-    Enables: logout from all devices, device management UI (future).
     """
     id            = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user          = models.ForeignKey(User, on_delete=models.CASCADE, related_name="sessions")

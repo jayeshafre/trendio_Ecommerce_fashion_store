@@ -1,10 +1,3 @@
-/**
- * src/constants/index.js — FIXED
- *
- * Fix: Added missing ROUTES.WISHLIST
- * Was: undefined → Link got to={undefined} → click did nothing
- * Now: "/account/wishlist" → works correctly
- */
 
 // ─── API ────────────────────────────────────────────────────
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api/v1";

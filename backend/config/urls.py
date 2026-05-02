@@ -20,10 +20,10 @@ urlpatterns = [
     # ─── API v1 ────────────────────────────────────────────
     path("api/v1/auth/",     include("apps.users.urls", namespace="users")),
     path("api/v1/", include("apps.products.urls", namespace="products")),
+    path("api/v1/cart/",     include("apps.cart.urls", namespace="cart")),
+    path("api/v1/orders/",   include("apps.orders.urls", namespace="orders")),
 
     # Future modules (keep like this)
-    path("api/v1/cart/",     include("apps.cart.urls", namespace="cart")),
-    # path("api/v1/orders/",   include("apps.orders.urls", namespace="orders")),
     # path("api/v1/payments/", include("apps.payments.urls", namespace="payments")),
 
     # ─── API Docs ──────────────────────────────────────────

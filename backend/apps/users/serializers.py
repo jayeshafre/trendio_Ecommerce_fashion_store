@@ -4,6 +4,7 @@ Auth serializers — production-grade validation.
 from django.contrib.auth import get_user_model, authenticate
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
+from .models import UserAddress
 
 User = get_user_model()
 
@@ -42,26 +43,11 @@ class RegisterSerializer(serializers.ModelSerializer):
 
 # ── Login ─────────────────────────────────────────────────────────────────────
 class LoginSerializer(serializers.Serializer):
-    """
-    Accepts EITHER email or phone number in the `identifier` field.
-    Also accepts `email` directly for backwards compatibility with frontend.
-
-    Flow:
-      1. Client sends { identifier: "9876543210", password: "..." }
-         OR { identifier: "user@email.com", password: "..." }
-         OR { email: "user@email.com", password: "..." }   ← legacy
-      2. We detect whether it's a phone or email
-      3. Look up the user by that field
-      4. Call authenticate() with their email (Django's USERNAME_FIELD)
-    """
-    # Accept either field name — frontend can send "identifier" or "email"
     identifier = serializers.CharField(required=False, allow_blank=True)
     email      = serializers.EmailField(required=False, allow_blank=True)
     password   = serializers.CharField(write_only=True)
 
     def validate(self, attrs):
-        # ── Step 1: resolve identifier ────────────────────────────────────────
-        # Accept either "identifier" or legacy "email" field
         raw = (attrs.get("identifier") or attrs.get("email") or "").strip()
 
         if not raw:
@@ -70,29 +56,22 @@ class LoginSerializer(serializers.Serializer):
             )
 
         password = attrs.get("password", "")
-
-        # ── Step 2: detect phone vs email ─────────────────────────────────────
         is_phone = raw.isdigit() or (raw.startswith("+") and raw[1:].isdigit())
 
         if is_phone:
-            # Strip leading country code if user types +91XXXXXXXXXX
             phone = raw.lstrip("+")
             if phone.startswith("91") and len(phone) == 12:
-                phone = phone[2:]   # strip 91, keep 10-digit number
-
-            # Look up user by phone
+                phone = phone[2:]
             try:
                 user_obj = User.objects.get(phone=phone)
             except User.DoesNotExist:
                 raise serializers.ValidationError(
                     {"identifier": "No account found with this mobile number."}
                 )
-            # Authenticate using their email (Django USERNAME_FIELD = email)
             login_email = user_obj.email
         else:
             login_email = raw.lower()
 
-        # ── Step 3: authenticate ──────────────────────────────────────────────
         user = authenticate(
             request=self.context.get("request"),
             username=login_email,
@@ -103,7 +82,6 @@ class LoginSerializer(serializers.Serializer):
             raise serializers.ValidationError(
                 {"detail": "Invalid credentials. Please try again."}
             )
-
         if not user.is_active:
             raise serializers.ValidationError(
                 {"detail": "Your account has been deactivated. Contact support."}
@@ -127,6 +105,73 @@ class UserMeSerializer(serializers.ModelSerializer):
 
     def get_full_name(self, obj):
         return obj.get_full_name()
+
+
+# ── Update Profile ────────────────────────────────────────────────────────────
+class UpdateProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model  = User
+        fields = ["first_name", "last_name", "phone"]
+
+    def validate_first_name(self, value):
+        value = value.strip()
+        if not value:
+            raise serializers.ValidationError("First name cannot be blank.")
+        return value
+
+    def validate_last_name(self, value):
+        value = value.strip()
+        if not value:
+            raise serializers.ValidationError("Last name cannot be blank.")
+        return value
+
+    def validate_phone(self, value):
+        if not value:
+            return value
+        clean = value.strip().replace(" ", "")
+        if not clean.isdigit() or len(clean) != 10:
+            raise serializers.ValidationError("Enter a valid 10-digit mobile number.")
+        qs = User.objects.filter(phone=clean).exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise serializers.ValidationError("This mobile number is already registered.")
+        return clean
+
+
+# ── Address (read) ────────────────────────────────────────────────────────────
+class UserAddressSerializer(serializers.ModelSerializer):
+    formatted = serializers.CharField(read_only=True)
+
+    class Meta:
+        model  = UserAddress
+        fields = [
+            "id", "full_name", "phone",
+            "address_line1", "address_line2",
+            "city", "state", "pincode",
+            "is_default", "formatted",
+        ]
+
+
+# ── Address (write) ───────────────────────────────────────────────────────────
+class UserAddressWriteSerializer(serializers.ModelSerializer):
+    class Meta:
+        model  = UserAddress
+        fields = [
+            "full_name", "phone",
+            "address_line1", "address_line2",
+            "city", "state", "pincode",
+            "is_default",
+        ]
+
+    def validate_phone(self, value):
+        clean = value.strip().replace(" ", "")
+        if not clean.isdigit() or len(clean) not in (10, 12):
+            raise serializers.ValidationError("Enter a valid 10-digit mobile number.")
+        return clean
+
+    def validate_pincode(self, value):
+        if not value.strip().isdigit() or len(value.strip()) != 6:
+            raise serializers.ValidationError("Enter a valid 6-digit pincode.")
+        return value.strip()
 
 
 # ── Token response ────────────────────────────────────────────────────────────

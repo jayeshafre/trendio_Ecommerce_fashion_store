@@ -1,18 +1,12 @@
 """
-Auth Views — thin controllers. All logic delegates to services.py.
+Auth + Address Views — all under /api/v1/auth/
 
-Endpoints covered:
-    POST   /api/v1/auth/register/
-    POST   /api/v1/auth/login/
-    POST   /api/v1/auth/logout/
-    GET    /api/v1/auth/me/
-    PATCH  /api/v1/auth/me/
-    POST   /api/v1/auth/otp/send/
-    POST   /api/v1/auth/otp/verify/
-    POST   /api/v1/auth/password/forgot/
-    POST   /api/v1/auth/password/reset/
-    POST   /api/v1/auth/password/change/
-    POST   /api/v1/auth/token/refresh/
+Address endpoints added here (users module owns addresses):
+    GET    /api/v1/auth/addresses/        → list user's addresses
+    POST   /api/v1/auth/addresses/        → create address
+    GET    /api/v1/auth/addresses/{id}/   → single address
+    PATCH  /api/v1/auth/addresses/{id}/   → update address
+    DELETE /api/v1/auth/addresses/{id}/   → delete address
 """
 import logging
 
@@ -20,10 +14,9 @@ from django.contrib.auth import get_user_model
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework_simplejwt.views import TokenRefreshView
-from drf_spectacular.utils import extend_schema, OpenApiResponse
+from drf_spectacular.utils import extend_schema
 
-from .models import OTPCode
+from .models import UserAddress
 from .serializers import (
     ChangePasswordSerializer,
     ForgotPasswordSerializer,
@@ -33,6 +26,9 @@ from .serializers import (
     OTPVerifySerializer,
     RegisterSerializer,
     ResetPasswordSerializer,
+    UpdateProfileSerializer,
+    UserAddressSerializer,
+    UserAddressWriteSerializer,
     UserMeSerializer,
 )
 from . import services
@@ -43,10 +39,6 @@ User   = get_user_model()
 
 # ── Register ───────────────────────────────────────────────────────────────────
 class RegisterView(generics.CreateAPIView):
-    """
-    Register a new customer account.
-    Account is created in unverified state — OTP verification required.
-    """
     serializer_class   = RegisterSerializer
     permission_classes = [permissions.AllowAny]
 
@@ -56,7 +48,6 @@ class RegisterView(generics.CreateAPIView):
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
 
-        # Auto-send email OTP for verification
         code = services.generate_otp(user.email, "email_verify")
         services.send_otp_email(user.email, code, "email_verify")
 
@@ -74,10 +65,6 @@ class RegisterView(generics.CreateAPIView):
 
 # ── Login ──────────────────────────────────────────────────────────────────────
 class LoginView(APIView):
-    """
-    Authenticate with email + password.
-    Returns JWT access + refresh tokens.
-    """
     permission_classes = [permissions.AllowAny]
 
     @extend_schema(tags=["Auth"], request=LoginSerializer)
@@ -102,9 +89,6 @@ class LoginView(APIView):
 
 # ── Logout ────────────────────────────────────────────────────────────────────
 class LogoutView(APIView):
-    """
-    Invalidates the refresh token and removes the session.
-    """
     permission_classes = [permissions.IsAuthenticated]
 
     @extend_schema(tags=["Auth"], request=LogoutSerializer)
@@ -119,26 +103,82 @@ class LogoutView(APIView):
 
 
 # ── Me (profile) ──────────────────────────────────────────────────────────────
-class MeView(generics.RetrieveUpdateAPIView):
+class MeView(APIView):
     """
-    GET  — Returns the current authenticated user's profile.
-    PATCH — Partially updates name/phone.
+    GET   → current user profile
+    PATCH → update first_name, last_name, phone only
     """
-    serializer_class   = UserMeSerializer
     permission_classes = [permissions.IsAuthenticated]
-    http_method_names  = ["get", "patch"]
 
     @extend_schema(tags=["Auth"])
-    def get_object(self):
-        return self.request.user
+    def get(self, request):
+        return Response(UserMeSerializer(request.user).data)
+
+    @extend_schema(tags=["Auth"], request=UpdateProfileSerializer)
+    def patch(self, request):
+        serializer = UpdateProfileSerializer(
+            request.user,
+            data=request.data,
+            partial=True,
+            context={"request": request},
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(UserMeSerializer(request.user).data)
+
+
+# ── Addresses ─────────────────────────────────────────────────────────────────
+class AddressListCreateView(generics.ListCreateAPIView):
+    """
+    GET  → list all saved addresses for the current user (plain array, no pagination)
+    POST → add a new delivery address
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return UserAddress.objects.filter(user=self.request.user)
+
+    def get_serializer_class(self):
+        if self.request.method == "POST":
+            return UserAddressWriteSerializer
+        return UserAddressSerializer
+
+    # Override list to return plain array (not paginated) — frontend expects []
+    @extend_schema(tags=["Auth | Addresses"])
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        serializer = UserAddressSerializer(queryset, many=True)
+        return Response(serializer.data)   # ← plain array, not {count, results}
+
+    @extend_schema(tags=["Auth | Addresses"])
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+
+class AddressDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """
+    GET    → single address
+    PATCH  → update address fields
+    DELETE → delete address
+    """
+    permission_classes = [permissions.IsAuthenticated]
+    http_method_names  = ["get", "patch", "delete"]
+
+    def get_queryset(self):
+        return UserAddress.objects.filter(user=self.request.user)
+
+    def get_serializer_class(self):
+        if self.request.method == "PATCH":
+            return UserAddressWriteSerializer
+        return UserAddressSerializer
+
+    @extend_schema(tags=["Auth | Addresses"])
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
 
 
 # ── OTP Send ──────────────────────────────────────────────────────────────────
 class OTPSendView(APIView):
-    """
-    Generates and sends a 6-digit OTP to phone or email.
-    Purpose determines the flow: phone_verify | otp_login | password_reset
-    """
     permission_classes = [permissions.AllowAny]
 
     @extend_schema(tags=["Auth | OTP"], request=OTPSendSerializer)
@@ -149,24 +189,21 @@ class OTPSendView(APIView):
         identifier = serializer.validated_data["identifier"]
         purpose    = serializer.validated_data["purpose"]
 
-        # For OTP login — ensure user exists
         if purpose == "otp_login":
             exists = (
                 User.objects.filter(email=identifier).exists()
                 or User.objects.filter(phone=identifier).exists()
             )
             if not exists:
-                # Security: don't reveal if user exists; still return 200
                 logger.warning(f"OTP login attempted for non-existent: {identifier}")
                 return Response(
                     {"message": "If an account exists, a code has been sent."},
                     status=status.HTTP_200_OK,
                 )
 
-        code = services.generate_otp(identifier, purpose)
-
-        # Determine send channel
+        code     = services.generate_otp(identifier, purpose)
         is_email = "@" in identifier
+
         if is_email:
             services.send_otp_email(identifier, code, purpose)
         else:
@@ -180,13 +217,6 @@ class OTPSendView(APIView):
 
 # ── OTP Verify ────────────────────────────────────────────────────────────────
 class OTPVerifyView(APIView):
-    """
-    Verifies OTP and performs the action based on purpose:
-    - phone_verify  → marks user phone as verified
-    - email_verify  → marks user as verified
-    - otp_login     → returns JWT tokens (passwordless login)
-    - password_reset → validated; client proceeds to /password/reset/
-    """
     permission_classes = [permissions.AllowAny]
 
     @extend_schema(tags=["Auth | OTP"], request=OTPVerifySerializer)
@@ -202,7 +232,6 @@ class OTPVerifyView(APIView):
         if not valid:
             return Response({"detail": error}, status=status.HTTP_400_BAD_REQUEST)
 
-        # ── Post-verification actions ───────────────────────
         if purpose == "email_verify":
             User.objects.filter(email=identifier).update(is_verified=True)
             return Response({"message": "Email verified successfully."})
@@ -229,16 +258,11 @@ class OTPVerifyView(APIView):
                 status=status.HTTP_200_OK,
             )
 
-        # password_reset — just confirm OTP is valid; client moves to reset step
         return Response({"message": "OTP verified. Proceed to set new password."})
 
 
 # ── Forgot Password ───────────────────────────────────────────────────────────
 class ForgotPasswordView(APIView):
-    """
-    Sends a 6-digit password reset OTP to the registered email.
-    Always returns 200 to prevent user enumeration.
-    """
     permission_classes = [permissions.AllowAny]
 
     @extend_schema(tags=["Auth | Password"], request=ForgotPasswordSerializer)
@@ -260,9 +284,6 @@ class ForgotPasswordView(APIView):
 
 # ── Reset Password ────────────────────────────────────────────────────────────
 class ResetPasswordView(APIView):
-    """
-    Verifies OTP + sets new password in one step.
-    """
     permission_classes = [permissions.AllowAny]
 
     @extend_schema(tags=["Auth | Password"], request=ResetPasswordSerializer)
@@ -285,8 +306,6 @@ class ResetPasswordView(APIView):
 
         user.set_password(password)
         user.save(update_fields=["password"])
-
-        # Invalidate all sessions (force re-login on all devices)
         services.invalidate_all_sessions(user)
 
         logger.info(f"Password reset completed for: {email}")
@@ -295,10 +314,6 @@ class ResetPasswordView(APIView):
 
 # ── Change Password (authenticated) ───────────────────────────────────────────
 class ChangePasswordView(APIView):
-    """
-    Changes password for an authenticated user.
-    Requires current password verification.
-    """
     permission_classes = [permissions.IsAuthenticated]
 
     @extend_schema(tags=["Auth | Password"], request=ChangePasswordSerializer)
@@ -308,8 +323,6 @@ class ChangePasswordView(APIView):
 
         request.user.set_password(serializer.validated_data["new_password"])
         request.user.save(update_fields=["password"])
-
-        # Invalidate all sessions (security best practice)
         services.invalidate_all_sessions(request.user)
 
         logger.info(f"Password changed for: {request.user.email}")
