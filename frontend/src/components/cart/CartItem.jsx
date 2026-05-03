@@ -1,20 +1,19 @@
 /**
  * CartItem — one row in the cart.
  *
- * Shows: image, brand, title, variant (size/color), qty controls, price
- * Handles: optimistic qty update, remove, low-stock warning
- *
+ * Fix: product.primary_image passed through getImageUrl()
+ * so relative Django media paths like /media/products/image.jpg
+ * become http://localhost:8000/media/products/image.jpg
  */
 import { useState } from "react";
 import { Link }     from "react-router-dom";
 import { Minus, Plus, Trash2, AlertTriangle } from "lucide-react";
 import { useUpdateQty, useRemoveItem } from "@hooks/useCart";
-import { formatCurrency } from "@utils";
+import { formatCurrency, getImageUrl } from "@utils";   // ← getImageUrl added
 
 export default function CartItem({ item }) {
   const { id, product, variant, quantity, price_at_add, line_total, stock_warning } = item;
 
-  // Optimistic local qty — rolls back on API error
   const [localQty, setLocalQty] = useState(quantity);
 
   const updateQty  = useUpdateQty();
@@ -27,23 +26,23 @@ export default function CartItem({ item }) {
   const handleQtyChange = (newQty) => {
     if (newQty < 1 || newQty > 10 || newQty === localQty) return;
     const prev = localQty;
-    setLocalQty(newQty); // optimistic
+    setLocalQty(newQty);
     updateQty.mutate(
       { itemId: id, quantity: newQty },
-      { onError: () => setLocalQty(prev) } // rollback
+      { onError: () => setLocalQty(prev) }
     );
   };
 
-  const handleRemove = () => {
-    removeItem.mutate(id);
-  };
+  const handleRemove = () => removeItem.mutate(id);
 
-  // Stock warning badge
   const warningText = {
     out_of_stock:       "Out of stock — remove to continue",
     insufficient_stock: `Only ${variant.stock} left — reduce qty`,
     low_stock:          `Only ${variant.stock} left!`,
   }[stock_warning];
+
+  // ── Resolved image URL ────────────────────────────────────
+  const imageUrl = getImageUrl(product.primary_image);  // ← THE FIX
 
   return (
     <div
@@ -56,11 +55,12 @@ export default function CartItem({ item }) {
           className="h-24 w-20 overflow-hidden rounded-lg"
           style={{ backgroundColor: "#EDE3D9" }}
         >
-          {product.primary_image ? (
+          {imageUrl ? (
             <img
-              src={product.primary_image}
+              src={imageUrl}
               alt={product.title}
               className="h-full w-full object-cover"
+              onError={(e) => { e.target.style.display = "none"; }}
             />
           ) : (
             <div className="flex h-full items-center justify-center">
@@ -75,25 +75,21 @@ export default function CartItem({ item }) {
       {/* ── Info ──────────────────────────────────────── */}
       <div className="flex flex-1 flex-col justify-between">
         <div>
-          {/* Brand */}
           {product.brand && (
             <p className="mb-0.5 text-[9px] font-bold tracking-widest" style={{ color: "#C2A98A" }}>
               {product.brand.toUpperCase()}
             </p>
           )}
-          {/* Title */}
           <Link to={`/product/${product.slug}`}>
             <h3 className="mb-1 text-sm font-medium leading-snug" style={{ color: "#2B2B2B" }}>
               {product.title}
             </h3>
           </Link>
-          {/* Variant */}
           <p className="text-xs" style={{ color: "#7A6E67" }}>
             {[variant.size, variant.color].filter(Boolean).join(" · ")}
           </p>
         </div>
 
-        {/* Stock warning */}
         {stock_warning && (
           <div className="mt-1.5 flex items-center gap-1.5 text-xs" style={{ color: "#D97757" }}>
             <AlertTriangle size={11} />

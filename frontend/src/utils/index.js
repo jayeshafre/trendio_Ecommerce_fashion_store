@@ -1,6 +1,7 @@
 import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { format, formatDistanceToNow } from "date-fns";
+export { getImageUrl } from "./getImageUrl";
 
 // ─── Tailwind class merger ──────────────────────────────────
 export function cn(...inputs) {

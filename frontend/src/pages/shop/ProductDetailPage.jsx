@@ -1,23 +1,37 @@
 /**
- * ProductDetailPage — UPDATED with real cart integration
+ * ProductDetailPage — FIXED wishlist image
  *
- * Changes from previous version:
- *   - "ADD TO BAG" now calls useAddToCart → POST /cart/items/
- *   - AddToCartButton component handles all cart logic
- *   - Wishlist heart wired to useWishlistStore
- *   - Share button uses Web Share API with clipboard fallback
- *
+ * Root cause: product detail API returns images[] array, not primary_image.
+ * When toggle(product) stored the raw product object, primary_image was undefined.
+ * Fix: normalize the product before passing to toggle() — extract primary_image
+ * from the images array (first image marked is_primary, or first image overall).
  */
-import { useState }       from "react";
+import { useState }        from "react";
 import { useParams, Link } from "react-router-dom";
 import { Heart, Share2, ChevronRight, Minus, Plus, RotateCcw, Shield } from "lucide-react";
 import toast from "react-hot-toast";
-import { useProduct }          from "@hooks/useProducts";
-import { useWishlistStore }    from "@store";
-import ProductImageGallery     from "@components/product/ProductImageGallery";
-import VariantSelector         from "@components/product/VariantSelector";
-import AddToCartButton         from "@components/cart/AddToCartButton";
-import { formatCurrency }      from "@utils";
+import { useProduct }       from "@hooks/useProducts";
+import { useWishlistStore } from "@store";
+import ProductImageGallery  from "@components/product/ProductImageGallery";
+import VariantSelector      from "@components/product/VariantSelector";
+import AddToCartButton      from "@components/cart/AddToCartButton";
+import { formatCurrency }   from "@utils";
+
+// ── Normalize product for wishlist storage ────────────────────
+// The detail API has images[] but no primary_image field.
+// The list API has primary_image but no images[].
+// We normalize to always have primary_image so WishlistPage can render it.
+function normalizeForWishlist(product) {
+  // Already has primary_image (came from list API) — use as-is
+  if (product.primary_image) return product;
+
+  // Extract from images array
+  const images = product.images || [];
+  const primary = images.find((img) => img.is_primary) || images[0];
+  const primary_image = primary?.image || primary?.url || null;
+
+  return { ...product, primary_image };
+}
 
 function ProductDetailSkeleton() {
   return (
@@ -38,21 +52,26 @@ function ProductDetailSkeleton() {
 }
 
 export default function ProductDetailPage() {
-  const { slug }                              = useParams();
-  const { data: product, isLoading, error }   = useProduct(slug);
+  const { slug }                            = useParams();
+  const { data: product, isLoading, error } = useProduct(slug);
   const [selectedVariant, setSelectedVariant] = useState(null);
   const [qty, setQty]                         = useState(1);
 
-  // Wishlist
-  const toggle      = useWishlistStore((s) => s.toggle);
-  const isWishlisted = useWishlistStore((s) => product ? s.isWishlisted(product.id) : false);
+  const toggle = useWishlistStore((s) => s.toggle);
+  const items  = useWishlistStore((s) => s.items);
+
+  const isWishlisted = product
+    ? items.some((i) => i.id === product.id)
+    : false;
 
   if (isLoading) return <ProductDetailSkeleton />;
 
   if (error || !product) {
     return (
-      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4" style={{ backgroundColor: "#F8F5F2" }}>
-        <h2 className="text-2xl font-bold" style={{ fontFamily: "'Playfair Display', serif" }}>
+      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4"
+        style={{ backgroundColor: "#F8F5F2" }}>
+        <h2 className="text-2xl font-bold"
+          style={{ fontFamily: "'Playfair Display', serif" }}>
           Product not found.
         </h2>
         <Link to="/shop" className="text-sm underline" style={{ color: "#C2A98A" }}>
@@ -73,7 +92,9 @@ export default function ProductDetailPage() {
   const displayStock = selectedVariant?.stock ?? total_stock;
 
   const handleWishlist = () => {
-    toggle(product);
+    // ← FIX: normalize before saving so primary_image is always present
+    const normalized = normalizeForWishlist(product);
+    toggle(normalized);
     const nowWishlisted = !isWishlisted;
     toast(nowWishlisted ? "Added to wishlist!" : "Removed from wishlist.", {
       icon: nowWishlisted ? "❤️" : "🗑️",
@@ -101,7 +122,8 @@ export default function ProductDetailPage() {
           {category && (
             <>
               <ChevronRight size={12} />
-              <Link to={`/shop?category=${category.slug}`} className="hover:text-[#C2A98A] transition-colors">
+              <Link to={`/shop?category=${category.slug}`}
+                className="hover:text-[#C2A98A] transition-colors">
                 {category.name}
               </Link>
             </>
@@ -111,7 +133,7 @@ export default function ProductDetailPage() {
         </nav>
 
         {/* Main grid */}
-        <div className="grid gap-10 lg:grid-cols-[1fr_480px]">
+        <div className="grid gap-10 lg:grid-cols-[460px_720px]">
 
           {/* Image gallery */}
           <ProductImageGallery images={images} title={title} />
@@ -125,10 +147,8 @@ export default function ProductDetailPage() {
               </p>
             )}
 
-            <h1
-              className="mb-3 text-2xl font-bold leading-tight lg:text-3xl"
-              style={{ fontFamily: "'Playfair Display', serif", color: "#2B2B2B" }}
-            >
+            <h1 className="mb-3 text-2xl font-bold leading-tight lg:text-3xl"
+              style={{ fontFamily: "'Playfair Display', serif", color: "#2B2B2B" }}>
               {title}
             </h1>
 
@@ -143,7 +163,8 @@ export default function ProductDetailPage() {
                 </span>
               )}
               {discount_percent > 0 && (
-                <span className="rounded-full px-2.5 py-0.5 text-xs font-bold text-white" style={{ backgroundColor: "#D97757" }}>
+                <span className="rounded-full px-2.5 py-0.5 text-xs font-bold text-white"
+                  style={{ backgroundColor: "#D97757" }}>
                   -{discount_percent}%
                 </span>
               )}
@@ -151,7 +172,8 @@ export default function ProductDetailPage() {
 
             {/* Stock indicator */}
             <div className="mb-5 flex items-center gap-2">
-              <div className="h-2 w-2 rounded-full" style={{ backgroundColor: is_in_stock ? "#84cc16" : "#D97757" }} />
+              <div className="h-2 w-2 rounded-full"
+                style={{ backgroundColor: is_in_stock ? "#84cc16" : "#D97757" }} />
               <span className="text-xs" style={{ color: "#7A6E67" }}>
                 {is_in_stock
                   ? displayStock <= 5 ? `Only ${displayStock} left` : "In Stock"
@@ -177,22 +199,19 @@ export default function ProductDetailPage() {
               <span className="text-[10px] font-bold tracking-widest" style={{ color: "#2B2B2B" }}>
                 QTY
               </span>
-              <div className="flex items-center overflow-hidden rounded-xl border" style={{ borderColor: "#E5DCD3" }}>
-                <button
-                  type="button"
-                  onClick={() => setQty((q) => Math.max(1, q - 1))}
-                  className="flex h-10 w-10 items-center justify-center transition-colors hover:bg-[#EDE3D9]"
-                >
+              <div className="flex items-center overflow-hidden rounded-xl border"
+                style={{ borderColor: "#E5DCD3" }}>
+                <button type="button" onClick={() => setQty((q) => Math.max(1, q - 1))}
+                  className="flex h-10 w-10 items-center justify-center transition-colors hover:bg-[#EDE3D9]">
                   <Minus size={14} style={{ color: "#2B2B2B" }} />
                 </button>
-                <span className="flex h-10 w-10 items-center justify-center text-sm font-medium" style={{ color: "#2B2B2B" }}>
+                <span className="flex h-10 w-10 items-center justify-center text-sm font-medium"
+                  style={{ color: "#2B2B2B" }}>
                   {qty}
                 </span>
-                <button
-                  type="button"
+                <button type="button"
                   onClick={() => setQty((q) => Math.min(displayStock || 10, q + 1))}
-                  className="flex h-10 w-10 items-center justify-center transition-colors hover:bg-[#EDE3D9]"
-                >
+                  className="flex h-10 w-10 items-center justify-center transition-colors hover:bg-[#EDE3D9]">
                   <Plus size={14} style={{ color: "#2B2B2B" }} />
                 </button>
               </div>
@@ -200,7 +219,6 @@ export default function ProductDetailPage() {
 
             {/* CTA row */}
             <div className="mb-4 flex gap-3">
-              {/* ADD TO BAG — wired to real cart API */}
               <AddToCartButton
                 product={product}
                 selectedVariant={selectedVariant}
@@ -210,17 +228,19 @@ export default function ProductDetailPage() {
               {/* Wishlist */}
               <button
                 type="button"
-                onClick={handleWishlist}
-                className="flex h-14 w-14 items-center justify-center rounded-xl border transition-all hover:border-[#C2A98A]"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleWishlist();
+                }}
+                className="flex h-14 w-14 items-center justify-center rounded-xl border transition-all hover:border-[#C2A98A] z-20"
                 style={{
-                  borderColor: isWishlisted ? "#C2A98A" : "#E5DCD3",
+                  borderColor:     isWishlisted ? "#C2A98A" : "#E5DCD3",
                   backgroundColor: isWishlisted ? "#FDF8F4" : "#fff",
                 }}
                 title={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
               >
-                <Heart
-                  size={18}
-                  strokeWidth={1.5}
+                <Heart size={18} strokeWidth={1.5}
                   style={{
                     color: isWishlisted ? "#C2A98A" : "#2B2B2B",
                     fill:  isWishlisted ? "#C2A98A" : "none",
@@ -229,13 +249,10 @@ export default function ProductDetailPage() {
               </button>
 
               {/* Share */}
-              <button
-                type="button"
-                onClick={handleShare}
+              <button type="button" onClick={handleShare}
                 className="flex h-14 w-14 items-center justify-center rounded-xl border transition-all hover:border-[#C2A98A]"
                 style={{ borderColor: "#E5DCD3" }}
-                title="Share"
-              >
+                title="Share">
                 <Share2 size={16} style={{ color: "#2B2B2B" }} strokeWidth={1.5} />
               </button>
             </div>
@@ -255,18 +272,16 @@ export default function ProductDetailPage() {
 
             {/* Description */}
             {description && (
-              <details className="group border-t" style={{ borderColor: "#E5DCD3" }}>
-                <summary
-                  className="flex cursor-pointer items-center justify-between py-4 text-xs font-bold tracking-widest"
-                  style={{ color: "#2B2B2B" }}
-                >
-                  PRODUCT DETAILS
-                  <ChevronRight size={14} className="transition-transform group-open:rotate-90" style={{ color: "#7A6E67" }} />
-                </summary>
-                <p className="pb-4 text-sm leading-relaxed" style={{ color: "#7A6E67" }}>
+              <div className="border-t pt-4" style={{ borderColor: "#E5DCD3" }}>
+                <div className="flex items-center justify-between py-2">
+                  <p className="text-xs font-bold tracking-widest" style={{ color: "#2B2B2B" }}>
+                    PRODUCT DETAILS
+                  </p>
+                </div>
+                <p className="text-sm leading-relaxed" style={{ color: "#7A6E67" }}>
                   {description}
                 </p>
-              </details>
+              </div>
             )}
           </div>
         </div>
