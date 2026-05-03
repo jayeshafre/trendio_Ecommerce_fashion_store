@@ -23,8 +23,8 @@ urlpatterns = [
     path("api/v1/cart/",     include("apps.cart.urls", namespace="cart")),
     path("api/v1/orders/",   include("apps.orders.urls", namespace="orders")),
 
-    # Future modules (keep like this)
-    # path("api/v1/payments/", include("apps.payments.urls", namespace="payments")),
+
+    path("api/v1/payments/", include("apps.payments.urls", namespace="payments")),
 
     # ─── API Docs ──────────────────────────────────────────
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),

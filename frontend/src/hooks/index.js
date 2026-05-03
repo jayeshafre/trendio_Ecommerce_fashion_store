@@ -8,3 +8,5 @@ export * from "./useAuth";
 export * from "./useCart";
 export * from "./useOrders";
 export * from "./useProfile";
+export * from "./useRazorpay";
+export * from "./usePayments";

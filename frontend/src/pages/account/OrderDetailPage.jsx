@@ -1,29 +1,36 @@
 /**
- * OrderDetailPage.jsx
+ * OrderDetailPage.jsx — UPDATED with payment integration
  * Route: /account/orders/:id
- * Full order detail: items, shipping snapshot, payment status, cancel CTA.
+ *
+ * Added: PaymentButton shown when order is UNPAID and not CANCELLED
  */
 import { useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import {
   Package, MapPin, CreditCard, ChevronLeft,
   AlertTriangle, X,
 } from "lucide-react";
 import { useOrderDetail, useCancelOrder } from "@hooks/useOrders";
+import PaymentButton from "@components/payments/PaymentButton";
 import OrderStatusBadge from "./components/OrderStatusBadge";
 import { ROUTES } from "@constants";
 
 export default function OrderDetailPage() {
   const { id }     = useParams();
+  const navigate   = useNavigate();
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
-  const { data: order, isLoading, isError } = useOrderDetail(id);
+  const { data: order, isLoading, isError, refetch } = useOrderDetail(id);
   const cancelOrder = useCancelOrder();
 
   const handleCancel = () => {
     cancelOrder.mutate(id, {
       onSuccess: () => setShowCancelConfirm(false),
     });
+  };
+
+  const handlePaymentSuccess = () => {
+    refetch(); // refresh order → shows PAID + CONFIRMED
   };
 
   if (isLoading) return <DetailSkeleton />;
@@ -37,8 +44,12 @@ export default function OrderDetailPage() {
     );
   }
 
+  const isPaid      = order.payment_status === "paid";
+  const isCancelled = order.status === "cancelled";
+
   return (
     <div className="mx-auto max-w-[900px] px-6 py-10 animate-fade-in">
+
       {/* Back */}
       <Link
         to={ROUTES.ORDERS}
@@ -49,12 +60,10 @@ export default function OrderDetailPage() {
         ALL ORDERS
       </Link>
 
-      {/* Header row */}
+      {/* Header */}
       <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-xs font-semibold tracking-[0.15em]" style={{ color: "#C2A98A" }}>
-            ORDER
-          </p>
+          <p className="text-xs font-semibold tracking-[0.15em]" style={{ color: "#C2A98A" }}>ORDER</p>
           <h1 className="font-display text-2xl" style={{ color: "#2B2B2B" }}>
             {order.order_number}
           </h1>
@@ -67,39 +76,34 @@ export default function OrderDetailPage() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <OrderStatusBadge status={order.status} />
-          <PaymentBadge status={order.payment_status} />
+          <PaymentStatusBadge status={order.payment_status} />
         </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
-        {/* ── Left column ─────────────────────────────────────── */}
+
+        {/* ── Left column ─────────────────────────────────── */}
         <div className="space-y-5">
 
           {/* Items */}
           <section className="card-ivory overflow-hidden">
-            <div
-              className="flex items-center gap-2 border-b px-6 py-4"
-              style={{ borderColor: "#E5DCD3" }}
-            >
+            <div className="flex items-center gap-2 border-b px-6 py-4"
+              style={{ borderColor: "#E5DCD3" }}>
               <Package size={15} style={{ color: "#C2A98A" }} />
               <h2 className="font-display text-base">Items Ordered</h2>
             </div>
             <div className="divide-y" style={{ borderColor: "#E5DCD3" }}>
               {order.items?.map((item) => (
                 <div key={item.id} className="flex items-center gap-4 px-6 py-4">
-                  <div
-                    className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg"
-                    style={{ backgroundColor: "#EDE3D9" }}
-                  >
+                  <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg"
+                    style={{ backgroundColor: "#EDE3D9" }}>
                     <Package size={18} style={{ color: "#C2A98A" }} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="truncate text-sm font-medium" style={{ color: "#2B2B2B" }}>
                       {item.product_title}
                     </p>
-                    <p className="text-xs" style={{ color: "#7A6E67" }}>
-                      {item.variant_detail}
-                    </p>
+                    <p className="text-xs" style={{ color: "#7A6E67" }}>{item.variant_detail}</p>
                     <p className="text-xs" style={{ color: "#7A6E67" }}>
                       Qty: {item.quantity} × ₹{parseFloat(item.unit_price).toLocaleString("en-IN")}
                     </p>
@@ -129,7 +133,29 @@ export default function OrderDetailPage() {
             </p>
           </section>
 
-          {/* Cancel button */}
+          {/* Pay Now — shown when UNPAID and not cancelled */}
+          {!isPaid && !isCancelled && (
+            <section
+              className="rounded-xl border p-5"
+              style={{ borderColor: "#C2A98A", backgroundColor: "#FAF7F4" }}
+            >
+              <div className="mb-3 flex items-center gap-2">
+                <CreditCard size={15} style={{ color: "#C2A98A" }} />
+                <h2 className="font-display text-base">Complete Payment</h2>
+              </div>
+              <p className="mb-4 text-xs" style={{ color: "#7A6E67" }}>
+                Your order is saved but payment is pending. Complete payment to confirm your order.
+              </p>
+              <PaymentButton
+                orderId     = {id}
+                totalAmount = {order.total_amount}
+                onSuccess   = {handlePaymentSuccess}
+                className   = "w-full justify-center"
+              />
+            </section>
+          )}
+
+          {/* Cancel */}
           {order.can_cancel && (
             <div>
               {!showCancelConfirm ? (
@@ -142,10 +168,8 @@ export default function OrderDetailPage() {
                   Cancel this order
                 </button>
               ) : (
-                <div
-                  className="rounded-xl border p-5"
-                  style={{ borderColor: "#D97757", backgroundColor: "#FDF3F0" }}
-                >
+                <div className="rounded-xl border p-5"
+                  style={{ borderColor: "#D97757", backgroundColor: "#FDF3F0" }}>
                   <div className="mb-3 flex items-center gap-2">
                     <AlertTriangle size={15} style={{ color: "#D97757" }} />
                     <p className="text-sm font-semibold" style={{ color: "#D97757" }}>
@@ -154,21 +178,16 @@ export default function OrderDetailPage() {
                   </div>
                   <p className="mb-4 text-xs" style={{ color: "#7A6E67" }}>
                     This action cannot be undone. Stock will be restored.
-                    {order.payment_status === "paid" && " A refund will be initiated."}
+                    {isPaid && " A refund will be initiated."}
                   </p>
                   <div className="flex gap-3">
-                    <button
-                      onClick={handleCancel}
-                      disabled={cancelOrder.isPending}
+                    <button onClick={handleCancel} disabled={cancelOrder.isPending}
                       className="rounded-xl px-5 py-2.5 text-xs font-bold tracking-wider text-white transition-opacity hover:opacity-80 disabled:opacity-50"
-                      style={{ backgroundColor: "#D97757" }}
-                    >
+                      style={{ backgroundColor: "#D97757" }}>
                       {cancelOrder.isPending ? "Cancelling…" : "Yes, Cancel Order"}
                     </button>
-                    <button
-                      onClick={() => setShowCancelConfirm(false)}
-                      className="btn-outline px-5 py-2.5 text-xs"
-                    >
+                    <button onClick={() => setShowCancelConfirm(false)}
+                      className="btn-outline px-5 py-2.5 text-xs">
                       Keep Order
                     </button>
                   </div>
@@ -178,8 +197,9 @@ export default function OrderDetailPage() {
           )}
         </div>
 
-        {/* ── Right column: summary ─────────────────────────── */}
+        {/* ── Right column ──────────────────────────────────── */}
         <div className="space-y-5">
+
           {/* Price summary */}
           <section className="card-ivory p-6">
             <div className="mb-4 flex items-center gap-2">
@@ -213,7 +233,7 @@ export default function OrderDetailPage() {
           {/* Timeline */}
           <section className="card-ivory p-6">
             <h2 className="mb-4 font-display text-base">Order Timeline</h2>
-            <OrderTimeline status={order.status} placedAt={order.placed_at} updatedAt={order.updated_at} />
+            <OrderTimeline status={order.status} updatedAt={order.updated_at} />
           </section>
 
           {/* Notes */}
@@ -231,7 +251,7 @@ export default function OrderDetailPage() {
   );
 }
 
-// ── Order Status Timeline ─────────────────────────────────────
+// ── Status Timeline ───────────────────────────────────────────
 const STEPS = [
   { key: "pending",   label: "Order Placed"  },
   { key: "confirmed", label: "Confirmed"     },
@@ -239,10 +259,11 @@ const STEPS = [
   { key: "delivered", label: "Delivered"     },
 ];
 
-function OrderTimeline({ status, placedAt, updatedAt }) {
+function OrderTimeline({ status, updatedAt }) {
   if (status === "cancelled") {
     return (
-      <div className="flex items-center gap-2 rounded-xl p-3" style={{ backgroundColor: "#FDF3F0" }}>
+      <div className="flex items-center gap-2 rounded-xl p-3"
+        style={{ backgroundColor: "#FDF3F0" }}>
         <X size={14} style={{ color: "#D97757" }} />
         <p className="text-xs font-semibold" style={{ color: "#D97757" }}>Order Cancelled</p>
       </div>
@@ -274,10 +295,8 @@ function OrderTimeline({ status, placedAt, updatedAt }) {
               ) : null}
             </div>
             <div>
-              <p
-                className="text-xs font-semibold"
-                style={{ color: isDone || isCurrent ? "#2B2B2B" : "#C0B8B4" }}
-              >
+              <p className="text-xs font-semibold"
+                style={{ color: isDone || isCurrent ? "#2B2B2B" : "#C0B8B4" }}>
                 {step.label}
               </p>
               {isCurrent && (
@@ -295,7 +314,7 @@ function OrderTimeline({ status, placedAt, updatedAt }) {
   );
 }
 
-function PaymentBadge({ status }) {
+function PaymentStatusBadge({ status }) {
   const config = {
     unpaid:   { label: "Unpaid",   bg: "#FDF3F0", color: "#D97757" },
     paid:     { label: "Paid",     bg: "#F0FDF4", color: "#16a34a" },
@@ -303,10 +322,8 @@ function PaymentBadge({ status }) {
   };
   const c = config[status] ?? { label: status, bg: "#EDE3D9", color: "#7A6E67" };
   return (
-    <span
-      className="rounded-full px-2.5 py-0.5 text-[10px] font-bold tracking-widest"
-      style={{ backgroundColor: c.bg, color: c.color }}
-    >
+    <span className="rounded-full px-2.5 py-0.5 text-[10px] font-bold tracking-widest"
+      style={{ backgroundColor: c.bg, color: c.color }}>
       {c.label.toUpperCase()}
     </span>
   );
