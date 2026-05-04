@@ -78,6 +78,7 @@ class OrderListSerializer(serializers.ModelSerializer):
             "id", "order_number",
             "status", "status_display",
             "payment_status", "payment_display",
+            "payment_method",
             "total_amount", "item_count",
             "placed_at",
         ]
@@ -105,6 +106,7 @@ class OrderDetailSerializer(serializers.ModelSerializer):
             "shipping_address_full",
             "shipping_city", "shipping_state", "shipping_pincode",
             "razorpay_order_id",
+            "payment_method", 
             "notes", "can_cancel",
             "placed_at", "updated_at",
             "items",
@@ -120,6 +122,11 @@ class PlaceOrderSerializer(serializers.Serializer):
         required=False, allow_blank=True, max_length=500,
         help_text="Optional delivery instructions"
     )
+
+    payment_method = serializers.ChoiceField(          
+        choices=Order.PaymentMethod.choices,         
+        default=Order.PaymentMethod.ONLINE,            
+    ) 
 
 
 # ── Admin: update order status ────────────────────────────────

@@ -111,11 +111,25 @@ class OrderListCreateView(APIView):
         serializer = PlaceOrderSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
+        payment_method = serializer.validated_data.get(
+            "payment_method", Order.PaymentMethod.ONLINE
+        )
+
         order = OrderService.place_order(
             user       = request.user,
             address_id = str(serializer.validated_data["address_id"]),
             notes      = serializer.validated_data.get("notes", ""),
         )
+
+        # Set payment method + handle COD immediately
+        update_fields = ["payment_method"]
+        order.payment_method = payment_method
+
+        if payment_method == Order.PaymentMethod.COD:
+            order.status = Order.Status.CONFIRMED   # no Razorpay needed
+            update_fields.append("status")
+
+        order.save(update_fields=update_fields)
 
         return Response(
             OrderDetailSerializer(order).data,

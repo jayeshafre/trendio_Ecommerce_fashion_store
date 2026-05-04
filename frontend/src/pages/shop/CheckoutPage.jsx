@@ -1,16 +1,22 @@
 /**
  * CheckoutPage.jsx
- * FIX: getImageUrl() applied to cart item images in the order summary panel.
- * Only the import line and the <img src> line changed — nothing else.
+ * UPDATED: Added payment method selection (Pay Online / Cash on Delivery)
+ * - New <section> in left column for payment method toggle
+ * - handlePlaceAndPay sends payment_method to backend
+ * - COD flow: skip Razorpay, navigate directly to success
+ * - Online flow: unchanged (Razorpay modal)
  */
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { MapPin, Plus, Check, ChevronRight, Truck, ShieldCheck, Tag, X, CreditCard } from "lucide-react";
+import {
+  MapPin, Plus, Check, ChevronRight, Truck,
+  ShieldCheck, Tag, X, CreditCard, Banknote,
+} from "lucide-react";
 import { useCart } from "@hooks/useCart";
 import { useAddresses, useCreateAddress } from "@hooks/useProfile";
 import { useInitiatePayment } from "@hooks/usePayments";
 import { ROUTES, QUERY_KEYS } from "@constants";
-import { getApiError, getImageUrl } from "@utils";     // ← getImageUrl added
+import { getApiError, getImageUrl } from "@utils";
 import { ordersApi } from "@api/orders.api";
 import { useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
@@ -29,6 +35,7 @@ export default function CheckoutPage() {
   const [showAddressForm,   setShowAddressForm]    = useState(false);
   const [notes,             setNotes]              = useState("");
   const [isPlacing,         setIsPlacing]          = useState(false);
+  const [paymentMethod,     setPaymentMethod]      = useState("online"); // ← NEW
 
   const { data: cart, isLoading: cartLoading }           = useCart();
   const { data: addresses = [], isLoading: addrLoading } = useAddresses();
@@ -61,8 +68,9 @@ export default function CheckoutPage() {
 
     try {
       const { data: order } = await ordersApi.placeOrder({
-        address_id: selectedAddressId,
+        address_id:     selectedAddressId,
         notes,
+        payment_method: paymentMethod,   // ← NEW: send to backend
       });
 
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ORDERS.ALL });
@@ -70,8 +78,16 @@ export default function CheckoutPage() {
       clearCart();
       setIsPlacing(false);
 
+      // ── COD: skip Razorpay, go straight to success ──────
+      if (paymentMethod === "cod") {
+        toast.success("Order placed! Pay on delivery.");
+        navigate(`/order/success/${order.id}`);
+        return;
+      }
+
+      // ── Online: open Razorpay modal ──────────────────────
       initiatePayment({
-        orderId: order.id,
+        orderId:   order.id,
         onSuccess: () => navigate(`/order/success/${order.id}`),
         onFailure: (err) => {
           if (err?.description === "Payment cancelled by user.") {
@@ -125,8 +141,10 @@ export default function CheckoutPage() {
 
       <div className="grid gap-8 lg:grid-cols-[1fr_380px]">
 
-        {/* ── Left: Address ─────────────────────────────── */}
+        {/* ── Left column ───────────────────────────────── */}
         <div className="space-y-6">
+
+          {/* Delivery Address */}
           <section className="card-ivory p-6">
             <div className="mb-5 flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -212,7 +230,7 @@ export default function CheckoutPage() {
             )}
           </section>
 
-          {/* Delivery notes */}
+          {/* Delivery Notes */}
           <section className="card-ivory p-6">
             <h2 className="mb-3 font-display text-lg">Delivery Instructions</h2>
             <textarea value={notes} onChange={(e) => setNotes(e.target.value)}
@@ -222,6 +240,67 @@ export default function CheckoutPage() {
               {notes.length}/500
             </p>
           </section>
+
+          {/* ── Payment Method ── NEW SECTION ─────────────── */}
+          <section className="card-ivory p-6">
+            <h2 className="mb-4 font-display text-lg">Payment Method</h2>
+            <div className="space-y-3">
+
+              {/* Pay Online */}
+              <button
+                onClick={() => setPaymentMethod("online")}
+                className="w-full rounded-xl border p-4 text-left transition-all duration-150"
+                style={{
+                  borderColor:     paymentMethod === "online" ? "#C2A98A" : "#E5DCD3",
+                  backgroundColor: paymentMethod === "online" ? "#FAF7F4" : "white",
+                }}>
+                <div className="flex items-center gap-3">
+                  <div className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 transition-all"
+                    style={{
+                      borderColor:     paymentMethod === "online" ? "#C2A98A" : "#E5DCD3",
+                      backgroundColor: paymentMethod === "online" ? "#C2A98A" : "transparent",
+                    }}>
+                    {paymentMethod === "online" && <Check size={9} color="white" strokeWidth={3} />}
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold" style={{ color: "#2B2B2B" }}>Pay Online</p>
+                    <p className="text-xs" style={{ color: "#7A6E67" }}>
+                      UPI · Cards · Net Banking via Razorpay
+                    </p>
+                  </div>
+                  <CreditCard size={16} style={{ color: "#C2A98A" }} />
+                </div>
+              </button>
+
+              {/* Cash on Delivery */}
+              <button
+                onClick={() => setPaymentMethod("cod")}
+                className="w-full rounded-xl border p-4 text-left transition-all duration-150"
+                style={{
+                  borderColor:     paymentMethod === "cod" ? "#C2A98A" : "#E5DCD3",
+                  backgroundColor: paymentMethod === "cod" ? "#FAF7F4" : "white",
+                }}>
+                <div className="flex items-center gap-3">
+                  <div className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 transition-all"
+                    style={{
+                      borderColor:     paymentMethod === "cod" ? "#C2A98A" : "#E5DCD3",
+                      backgroundColor: paymentMethod === "cod" ? "#C2A98A" : "transparent",
+                    }}>
+                    {paymentMethod === "cod" && <Check size={9} color="white" strokeWidth={3} />}
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold" style={{ color: "#2B2B2B" }}>Cash on Delivery</p>
+                    <p className="text-xs" style={{ color: "#7A6E67" }}>
+                      Pay cash when your order arrives
+                    </p>
+                  </div>
+                  <Banknote size={16} style={{ color: "#C2A98A" }} />
+                </div>
+              </button>
+
+            </div>
+          </section>
+          {/* ── END Payment Method ────────────────────────── */}
 
           {/* Trust badges */}
           <div className="flex flex-wrap items-center gap-4">
@@ -246,16 +325,14 @@ export default function CheckoutPage() {
             {/* Cart items */}
             <div className="mb-5 max-h-64 space-y-4 overflow-y-auto pr-1">
               {cart.items?.map((item) => {
-                // ── FIX: resolve full image URL ───────────
                 const imageUrl = getImageUrl(item.product?.primary_image);
-
                 return (
                   <div key={item.id} className="flex gap-3">
                     <div className="h-16 w-14 shrink-0 rounded-lg overflow-hidden"
                       style={{ backgroundColor: "#EDE3D9" }}>
                       {imageUrl ? (
                         <img
-                          src={imageUrl}          // ← was: item.product.primary_image
+                          src={imageUrl}
                           alt={item.product?.title}
                           className="h-full w-full object-cover"
                           onError={(e) => { e.target.style.display = "none"; }}
@@ -328,6 +405,8 @@ export default function CheckoutPage() {
                   <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
                   Opening Payment…
                 </span>
+              ) : paymentMethod === "cod" ? (
+                <><Banknote size={15} />Place Order</>
               ) : (
                 <><CreditCard size={15} />Place Order & Pay</>
               )}
@@ -339,8 +418,11 @@ export default function CheckoutPage() {
               </p>
             )}
 
+            {/* Security / COD badge */}
             <p className="mt-3 text-center text-[10px]" style={{ color: "#7A6E67" }}>
-              🔒 Secured by Razorpay · 256-bit SSL
+              {paymentMethod === "online"
+                ? "🔒 Secured by Razorpay · 256-bit SSL"
+                : "🚚 Pay cash when your order arrives"}
             </p>
           </div>
         </div>
@@ -358,6 +440,7 @@ function CheckoutSkeleton() {
         <div className="space-y-4">
           <div className="skeleton h-64 rounded-xl" />
           <div className="skeleton h-32 rounded-xl" />
+          <div className="skeleton h-40 rounded-xl" />
         </div>
         <div className="skeleton h-80 rounded-xl" />
       </div>

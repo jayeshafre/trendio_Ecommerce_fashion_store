@@ -24,6 +24,10 @@ class Order(models.Model):
         PAID     = "paid",     "Paid"
         REFUNDED = "refunded", "Refunded"
 
+    class PaymentMethod(models.TextChoices):
+        ONLINE = "online", "Online"
+        COD    = "cod",    "Cash on Delivery"
+
     # ── Identity ───────────────────────────────────────────────
     id           = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user         = models.ForeignKey(
@@ -38,6 +42,13 @@ class Order(models.Model):
     payment_status = models.CharField(
         max_length=20, choices=PaymentStatus.choices, default=PaymentStatus.UNPAID, db_index=True
     )
+
+    payment_method = models.CharField(
+    max_length=20,
+    choices=PaymentMethod.choices,
+    default=PaymentMethod.ONLINE,
+    db_index=True,
+)
 
     # ── Financials ─────────────────────────────────────────────
     subtotal        = models.DecimalField(max_digits=10, decimal_places=2)

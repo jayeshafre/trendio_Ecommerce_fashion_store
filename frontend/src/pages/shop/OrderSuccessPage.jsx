@@ -1,15 +1,12 @@
 /**
- * OrderSuccessPage.jsx — UPDATED
+ * OrderSuccessPage.jsx — FIXED
  * Route: /order/success/:id
  *
- * Three states based on order.payment_status + order.status:
+ * Fix: Pay Now button moved to TOP (before order card) when UNPAID
+ * so it's always visible without scrolling.
  *
- *  PAID      → green "Payment Successful" — normal happy path
- *  UNPAID    → amber "Complete Payment" — user cancelled/failed Razorpay
- *  CANCELLED → red  "Order Cancelled"
- *
- * When UNPAID: shows "Pay Now" button → opens Razorpay modal again.
- * Order is already created so no duplicate order risk.
+ * Also guards payment_status comparison with .toLowerCase()
+ * in case backend returns "Unpaid" vs "unpaid".
  */
 import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
@@ -22,20 +19,17 @@ import { useInitiatePayment } from "@hooks/usePayments";
 import { ROUTES } from "@constants";
 
 export default function OrderSuccessPage() {
-  const { id }    = useParams();
+  const { id } = useParams();
   const [paymentFailed, setPaymentFailed] = useState(false);
 
-  const {
-    data: order, isLoading, isError, refetch,
-  } = useOrderDetail(id);
-
-  const { initiatePayment, isLoading: isPaying } = useInitiatePayment();
+  const { data: order, isLoading, isError, refetch } = useOrderDetail(id);
+  const { initiatePayment, isLoading: isPaying }      = useInitiatePayment();
 
   const handlePayNow = () => {
     setPaymentFailed(false);
     initiatePayment({
       orderId:   id,
-      onSuccess: () => refetch(),   // refresh → shows green PAID state
+      onSuccess: () => refetch(),
       onFailure: (err) => {
         if (err?.description !== "Payment cancelled by user.") {
           setPaymentFailed(true);
@@ -55,64 +49,54 @@ export default function OrderSuccessPage() {
     );
   }
 
-  const isPaid      = order.payment_status === "paid";
-  const isCancelled = order.status === "cancelled";
+  // Guard: case-insensitive compare
+  const paymentStatus = (order.payment_status || "").toLowerCase();
+  const orderStatus   = (order.status || "").toLowerCase();
+
+  const isPaid      = paymentStatus === "paid";
+  const isCancelled = orderStatus === "cancelled";
   const isUnpaid    = !isPaid && !isCancelled;
 
-  // ── Header config per state ───────────────────────────────
-  const stateConfig = {
-    paid: {
-      iconBg:   "#F0FDF4",
-      icon:     <CheckCircle2 size={44} style={{ color: "#16a34a" }} strokeWidth={1.5} />,
-      label:    "PAYMENT SUCCESSFUL",
-      labelColor: "#16a34a",
-      title:    "Order Confirmed!",
-      subtitle: "Your order is confirmed and will be processed shortly.",
-    },
-    unpaid: {
-      iconBg:   "#EDE3D9",
-      icon:     <Clock size={44} style={{ color: "#C2A98A" }} strokeWidth={1.5} />,
-      label:    "PAYMENT PENDING",
-      labelColor: "#C2A98A",
-      title:    "Almost there!",
-      subtitle: "Your order is saved. Complete payment to confirm it.",
-    },
-    cancelled: {
-      iconBg:   "#FDF3F0",
-      icon:     <AlertTriangle size={44} style={{ color: "#D97757" }} strokeWidth={1.5} />,
-      label:    "ORDER CANCELLED",
-      labelColor: "#D97757",
-      title:    "Order Cancelled",
-      subtitle: "This order has been cancelled.",
-    },
+  // ── State config ──────────────────────────────────────────
+  const cfg = isPaid ? {
+    iconBg:     "#F0FDF4",
+    icon:       <CheckCircle2 size={44} style={{ color: "#16a34a" }} strokeWidth={1.5} />,
+    label:      "PAYMENT SUCCESSFUL",
+    labelColor: "#16a34a",
+    title:      "Order Confirmed!",
+    subtitle:   "Your order is confirmed and will be processed shortly.",
+  } : isCancelled ? {
+    iconBg:     "#FDF3F0",
+    icon:       <AlertTriangle size={44} style={{ color: "#D97757" }} strokeWidth={1.5} />,
+    label:      "ORDER CANCELLED",
+    labelColor: "#D97757",
+    title:      "Order Cancelled",
+    subtitle:   "This order has been cancelled.",
+  } : {
+    iconBg:     "#EDE3D9",
+    icon:       <Clock size={44} style={{ color: "#C2A98A" }} strokeWidth={1.5} />,
+    label:      "PAYMENT PENDING",
+    labelColor: "#C2A98A",
+    title:      "Almost there!",
+    subtitle:   "Your order is saved. Complete payment to confirm it.",
   };
 
-  const cfg = isPaid ? stateConfig.paid : isCancelled ? stateConfig.cancelled : stateConfig.unpaid;
-
   return (
-    <div className="mx-auto max-w-[640px] px-6 py-16 animate-fade-in">
+    <div className="mx-auto max-w-[640px] px-6 py-12 animate-fade-in">
 
       {/* ── Status header ─────────────────────────────────── */}
-      <div className="mb-8 flex flex-col items-center text-center">
+      <div className="mb-6 flex flex-col items-center text-center">
         <div
-          className="mb-6 flex h-20 w-20 items-center justify-center rounded-full"
+          className="mb-5 flex h-20 w-20 items-center justify-center rounded-full"
           style={{ backgroundColor: cfg.iconBg }}
         >
           {cfg.icon}
         </div>
-
-        <p
-          className="mb-1 text-xs font-semibold tracking-[0.2em]"
-          style={{ color: cfg.labelColor }}
-        >
+        <p className="mb-1 text-xs font-semibold tracking-[0.2em]" style={{ color: cfg.labelColor }}>
           {cfg.label}
         </p>
-        <h1 className="font-display text-3xl" style={{ color: "#2B2B2B" }}>
-          {cfg.title}
-        </h1>
-        <p className="mt-2 text-sm" style={{ color: "#7A6E67" }}>
-          {cfg.subtitle}
-        </p>
+        <h1 className="font-display text-3xl" style={{ color: "#2B2B2B" }}>{cfg.title}</h1>
+        <p className="mt-2 text-sm" style={{ color: "#7A6E67" }}>{cfg.subtitle}</p>
 
         {/* Order number chip */}
         <div className="mt-4 rounded-xl px-5 py-2.5" style={{ backgroundColor: "#EDE3D9" }}>
@@ -125,26 +109,53 @@ export default function OrderSuccessPage() {
         </div>
       </div>
 
-      {/* ── Payment failed warning ────────────────────────── */}
-      {paymentFailed && isUnpaid && (
-        <div
-          className="mb-5 rounded-xl border p-4 animate-fade-in"
-          style={{ borderColor: "#D97757", backgroundColor: "#FDF3F0" }}
-        >
-          <div className="flex items-center gap-2">
-            <AlertTriangle size={14} style={{ color: "#D97757" }} />
-            <p className="text-sm font-semibold" style={{ color: "#D97757" }}>
-              Payment failed
-            </p>
-          </div>
-          <p className="mt-1 text-xs" style={{ color: "#7A6E67" }}>
-            Your order is saved. You won't be charged twice — try again below.
+      {/* ── PAY NOW — shown ABOVE order card so always visible ── */}
+      {isUnpaid && (
+        <div className="mb-5 space-y-3">
+          {/* Payment failed warning */}
+          {paymentFailed && (
+            <div
+              className="rounded-xl border p-4 animate-fade-in"
+              style={{ borderColor: "#D97757", backgroundColor: "#FDF3F0" }}
+            >
+              <div className="flex items-center gap-2">
+                <AlertTriangle size={14} style={{ color: "#D97757" }} />
+                <p className="text-sm font-semibold" style={{ color: "#D97757" }}>Payment failed</p>
+              </div>
+              <p className="mt-1 text-xs" style={{ color: "#7A6E67" }}>
+                Your order is saved. You won't be charged twice — try again below.
+              </p>
+            </div>
+          )}
+
+          {/* Pay Now button — prominent, full width */}
+          <button
+            onClick={handlePayNow}
+            disabled={isPaying}
+            className="btn-primary w-full justify-center py-4"
+            style={{ fontSize: "0.9rem" }}
+          >
+            {isPaying ? (
+              <span className="flex items-center gap-2">
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                Opening Payment…
+              </span>
+            ) : (
+              <>
+                <CreditCard size={17} />
+                Pay ₹{parseFloat(order.total_amount).toLocaleString("en-IN")} Now
+              </>
+            )}
+          </button>
+
+          <p className="text-center text-[10px]" style={{ color: "#7A6E67" }}>
+            🔒 Secured by Razorpay · 256-bit SSL encryption
           </p>
         </div>
       )}
 
       {/* ── Order card ────────────────────────────────────── */}
-      <div className="card-ivory overflow-hidden">
+      <div className="card-ivory overflow-hidden mb-5">
 
         {/* Items */}
         <div className="divide-y" style={{ borderColor: "#E5DCD3" }}>
@@ -164,7 +175,7 @@ export default function OrderSuccessPage() {
                   {item.variant_detail} · Qty {item.quantity}
                 </p>
               </div>
-              <p className="text-sm font-semibold" style={{ color: "#2B2B2B" }}>
+              <p className="text-sm font-semibold shrink-0" style={{ color: "#2B2B2B" }}>
                 ₹{parseFloat(item.line_total).toLocaleString("en-IN")}
               </p>
             </div>
@@ -205,12 +216,8 @@ export default function OrderSuccessPage() {
           <p className="mb-1 text-[10px] font-semibold tracking-widest" style={{ color: "#7A6E67" }}>
             DELIVERING TO
           </p>
-          <p className="text-sm font-medium" style={{ color: "#2B2B2B" }}>
-            {order.shipping_name}
-          </p>
-          <p className="text-xs" style={{ color: "#7A6E67" }}>
-            {order.shipping_address_full}
-          </p>
+          <p className="text-sm font-medium" style={{ color: "#2B2B2B" }}>{order.shipping_name}</p>
+          <p className="text-xs" style={{ color: "#7A6E67" }}>{order.shipping_address_full}</p>
           <p className="text-xs" style={{ color: "#7A6E67" }}>{order.shipping_phone}</p>
         </div>
 
@@ -227,10 +234,8 @@ export default function OrderSuccessPage() {
               size={13}
               style={{ color: isPaid ? "#16a34a" : isCancelled ? "#9CA3AF" : "#D97757" }}
             />
-            <span
-              className="text-xs font-semibold"
-              style={{ color: isPaid ? "#16a34a" : isCancelled ? "#9CA3AF" : "#D97757" }}
-            >
+            <span className="text-xs font-semibold"
+              style={{ color: isPaid ? "#16a34a" : isCancelled ? "#9CA3AF" : "#D97757" }}>
               {isPaid ? "Payment Complete" : isCancelled ? "Order Cancelled" : "Payment Pending"}
             </span>
           </div>
@@ -246,50 +251,18 @@ export default function OrderSuccessPage() {
         </div>
       </div>
 
-      {/* ── CTAs ──────────────────────────────────────────── */}
-      <div className="mt-6 flex flex-col gap-3">
-
-        {/* Pay Now — only when UNPAID and not cancelled */}
-        {isUnpaid && (
-          <button
-            onClick={handlePayNow}
-            disabled={isPaying}
-            className="btn-primary w-full justify-center py-3.5 text-sm"
-          >
-            {isPaying ? (
-              <span className="flex items-center gap-2">
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                Opening Payment…
-              </span>
-            ) : (
-              <>
-                <CreditCard size={16} />
-                Pay ₹{parseFloat(order.total_amount).toLocaleString("en-IN")} Now
-              </>
-            )}
-          </button>
-        )}
-
-        {/* Secondary CTAs */}
-        <div className="flex flex-col gap-3 sm:flex-row">
-          <Link to={ROUTES.ORDERS} className="btn-primary flex-1 justify-center">
-            <Package size={14} />
-            {isPaid ? "Track Order" : "My Orders"}
-            <ArrowRight size={14} />
-          </Link>
-          <Link to={ROUTES.SHOP} className="btn-outline flex-1 justify-center">
-            <ShoppingBag size={14} />
-            Continue Shopping
-          </Link>
-        </div>
+      {/* ── Bottom CTAs ───────────────────────────────────── */}
+      <div className="flex flex-col gap-3 sm:flex-row">
+        <Link to={ROUTES.ORDERS} className="btn-primary flex-1 justify-center">
+          <Package size={14} />
+          {isPaid ? "Track Order" : "My Orders"}
+          <ArrowRight size={14} />
+        </Link>
+        <Link to={ROUTES.SHOP} className="btn-outline flex-1 justify-center">
+          <ShoppingBag size={14} />
+          Continue Shopping
+        </Link>
       </div>
-
-      {/* Security note for unpaid */}
-      {isUnpaid && (
-        <p className="mt-4 text-center text-[10px]" style={{ color: "#7A6E67" }}>
-          🔒 Payments secured by Razorpay · 256-bit SSL encryption
-        </p>
-      )}
     </div>
   );
 }
@@ -300,7 +273,8 @@ function SuccessSkeleton() {
       <div className="skeleton mx-auto mb-6 h-20 w-20 rounded-full" />
       <div className="skeleton mx-auto mb-2 h-8 w-48 rounded" />
       <div className="skeleton mx-auto mb-8 h-4 w-64 rounded" />
-      <div className="skeleton h-80 w-full rounded-xl" />
+      <div className="skeleton h-12 w-full rounded-xl mb-4" />
+      <div className="skeleton h-64 w-full rounded-xl" />
     </div>
   );
 }
