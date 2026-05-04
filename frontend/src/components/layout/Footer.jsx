@@ -124,7 +124,7 @@ export default function Footer() {
       </h3>
 
       <p>Indira Gandhi Chaowk,</p>
-      <p>Dusane Complex, Behind Sonue Dusane Jwellers</p>
+      <p>Dusane Complex, Behind Sonu Dusane Jwellers</p>
       <p>District: Jalgaon, Tal: Raver</p>
       <p>Savda – 425502, India</p>
     </div>

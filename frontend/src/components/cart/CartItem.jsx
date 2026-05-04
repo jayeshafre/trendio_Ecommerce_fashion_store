@@ -1,12 +1,12 @@
 /**
  * CartItem — one row in the cart.
  *
- * Fix: product.primary_image passed through getImageUrl()
- * so relative Django media paths like /media/products/image.jpg
- * become http://localhost:8000/media/products/image.jpg
+ * FIX: getImageUrl() wraps product.primary_image before <img src>.
+ * Root cause: primary_image is /media/... (Django port 8000).
+ * Without getImageUrl the browser requests from port 3000 → broken.
  */
-import { useState } from "react";
-import { Link }     from "react-router-dom";
+import { useState }  from "react";
+import { Link }      from "react-router-dom";
 import { Minus, Plus, Trash2, AlertTriangle } from "lucide-react";
 import { useUpdateQty, useRemoveItem } from "@hooks/useCart";
 import { formatCurrency, getImageUrl } from "@utils";   // ← getImageUrl added
@@ -15,7 +15,6 @@ export default function CartItem({ item }) {
   const { id, product, variant, quantity, price_at_add, line_total, stock_warning } = item;
 
   const [localQty, setLocalQty] = useState(quantity);
-
   const updateQty  = useUpdateQty();
   const removeItem = useRemoveItem();
 
@@ -41,23 +40,20 @@ export default function CartItem({ item }) {
     low_stock:          `Only ${variant.stock} left!`,
   }[stock_warning];
 
-  // ── Resolved image URL ────────────────────────────────────
-  const imageUrl = getImageUrl(product.primary_image);  // ← THE FIX
+  // ── FIX: resolve full URL ─────────────────────────────────
+  const imageUrl = getImageUrl(product.primary_image);
 
   return (
     <div
       className={`flex gap-4 rounded-xl p-4 transition-opacity ${isRemoving ? "opacity-40" : ""}`}
       style={{ backgroundColor: "#FFFFFF", border: "1px solid #E5DCD3" }}
     >
-      {/* ── Image ─────────────────────────────────────── */}
+      {/* Image */}
       <Link to={`/product/${product.slug}`} className="shrink-0">
-        <div
-          className="h-24 w-20 overflow-hidden rounded-lg"
-          style={{ backgroundColor: "#EDE3D9" }}
-        >
+        <div className="h-24 w-20 overflow-hidden rounded-lg" style={{ backgroundColor: "#EDE3D9" }}>
           {imageUrl ? (
             <img
-              src={imageUrl}
+              src={imageUrl}               // ← was: product.primary_image
               alt={product.title}
               className="h-full w-full object-cover"
               onError={(e) => { e.target.style.display = "none"; }}
@@ -72,7 +68,7 @@ export default function CartItem({ item }) {
         </div>
       </Link>
 
-      {/* ── Info ──────────────────────────────────────── */}
+      {/* Info */}
       <div className="flex flex-1 flex-col justify-between">
         <div>
           {product.brand && (
@@ -97,33 +93,20 @@ export default function CartItem({ item }) {
           </div>
         )}
 
-        {/* ── Bottom row: qty + price ─────────────────── */}
         <div className="mt-3 flex items-center justify-between">
           {/* Qty controls */}
-          <div
-            className="flex items-center overflow-hidden rounded-lg border"
-            style={{ borderColor: "#E5DCD3" }}
-          >
-            <button
-              type="button"
-              onClick={() => handleQtyChange(localQty - 1)}
+          <div className="flex items-center overflow-hidden rounded-lg border" style={{ borderColor: "#E5DCD3" }}>
+            <button type="button" onClick={() => handleQtyChange(localQty - 1)}
               disabled={isBusy || localQty <= 1}
-              className="flex h-8 w-8 items-center justify-center transition-colors hover:bg-[#EDE3D9] disabled:opacity-40"
-            >
+              className="flex h-8 w-8 items-center justify-center transition-colors hover:bg-[#EDE3D9] disabled:opacity-40">
               <Minus size={12} style={{ color: "#2B2B2B" }} />
             </button>
-            <span
-              className="flex h-8 w-8 items-center justify-center text-sm font-medium"
-              style={{ color: "#2B2B2B" }}
-            >
+            <span className="flex h-8 w-8 items-center justify-center text-sm font-medium" style={{ color: "#2B2B2B" }}>
               {isUpdating ? "…" : localQty}
             </span>
-            <button
-              type="button"
-              onClick={() => handleQtyChange(localQty + 1)}
+            <button type="button" onClick={() => handleQtyChange(localQty + 1)}
               disabled={isBusy || localQty >= Math.min(10, variant.stock)}
-              className="flex h-8 w-8 items-center justify-center transition-colors hover:bg-[#EDE3D9] disabled:opacity-40"
-            >
+              className="flex h-8 w-8 items-center justify-center transition-colors hover:bg-[#EDE3D9] disabled:opacity-40">
               <Plus size={12} style={{ color: "#2B2B2B" }} />
             </button>
           </div>
@@ -141,13 +124,9 @@ export default function CartItem({ item }) {
           </div>
 
           {/* Remove */}
-          <button
-            type="button"
-            onClick={handleRemove}
-            disabled={isBusy}
+          <button type="button" onClick={handleRemove} disabled={isBusy}
             className="ml-3 flex h-8 w-8 items-center justify-center rounded-lg transition-colors hover:bg-[#FEF2F2] disabled:opacity-40"
-            title="Remove item"
-          >
+            title="Remove item">
             <Trash2 size={14} style={{ color: "#D97757" }} />
           </button>
         </div>

@@ -1,16 +1,15 @@
 /**
- * OrderSuccessPage.jsx — UPDATED with payment integration
+ * OrderSuccessPage.jsx — UPDATED
  * Route: /order/success/:id
  *
- * States:
- *   UNPAID    → shows "Pay Now" button → triggers Razorpay modal
- *   PAYING    → loading spinner while Razorpay processes
- *   PAID      → shows green confirmed state, no pay button
- *   CANCELLED → shows cancelled state
+ * Three states based on order.payment_status + order.status:
  *
- * Flow:
- *   Place order → redirect here (UNPAID) → click Pay Now →
- *   Razorpay modal → pay → verify → page updates to PAID
+ *  PAID      → green "Payment Successful" — normal happy path
+ *  UNPAID    → amber "Complete Payment" — user cancelled/failed Razorpay
+ *  CANCELLED → red  "Order Cancelled"
+ *
+ * When UNPAID: shows "Pay Now" button → opens Razorpay modal again.
+ * Order is already created so no duplicate order risk.
  */
 import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
@@ -23,16 +22,20 @@ import { useInitiatePayment } from "@hooks/usePayments";
 import { ROUTES } from "@constants";
 
 export default function OrderSuccessPage() {
-  const { id }                              = useParams();
-  const { data: order, isLoading, isError, refetch } = useOrderDetail(id);
-  const { initiatePayment, isLoading: isPaying }     = useInitiatePayment();
-  const [paymentFailed, setPaymentFailed]            = useState(false);
+  const { id }    = useParams();
+  const [paymentFailed, setPaymentFailed] = useState(false);
+
+  const {
+    data: order, isLoading, isError, refetch,
+  } = useOrderDetail(id);
+
+  const { initiatePayment, isLoading: isPaying } = useInitiatePayment();
 
   const handlePayNow = () => {
     setPaymentFailed(false);
     initiatePayment({
       orderId:   id,
-      onSuccess: () => refetch(),       // refresh order to show PAID state
+      onSuccess: () => refetch(),   // refresh → shows green PAID state
       onFailure: (err) => {
         if (err?.description !== "Payment cancelled by user.") {
           setPaymentFailed(true);
@@ -54,6 +57,37 @@ export default function OrderSuccessPage() {
 
   const isPaid      = order.payment_status === "paid";
   const isCancelled = order.status === "cancelled";
+  const isUnpaid    = !isPaid && !isCancelled;
+
+  // ── Header config per state ───────────────────────────────
+  const stateConfig = {
+    paid: {
+      iconBg:   "#F0FDF4",
+      icon:     <CheckCircle2 size={44} style={{ color: "#16a34a" }} strokeWidth={1.5} />,
+      label:    "PAYMENT SUCCESSFUL",
+      labelColor: "#16a34a",
+      title:    "Order Confirmed!",
+      subtitle: "Your order is confirmed and will be processed shortly.",
+    },
+    unpaid: {
+      iconBg:   "#EDE3D9",
+      icon:     <Clock size={44} style={{ color: "#C2A98A" }} strokeWidth={1.5} />,
+      label:    "PAYMENT PENDING",
+      labelColor: "#C2A98A",
+      title:    "Almost there!",
+      subtitle: "Your order is saved. Complete payment to confirm it.",
+    },
+    cancelled: {
+      iconBg:   "#FDF3F0",
+      icon:     <AlertTriangle size={44} style={{ color: "#D97757" }} strokeWidth={1.5} />,
+      label:    "ORDER CANCELLED",
+      labelColor: "#D97757",
+      title:    "Order Cancelled",
+      subtitle: "This order has been cancelled.",
+    },
+  };
+
+  const cfg = isPaid ? stateConfig.paid : isCancelled ? stateConfig.cancelled : stateConfig.unpaid;
 
   return (
     <div className="mx-auto max-w-[640px] px-6 py-16 animate-fade-in">
@@ -62,45 +96,26 @@ export default function OrderSuccessPage() {
       <div className="mb-8 flex flex-col items-center text-center">
         <div
           className="mb-6 flex h-20 w-20 items-center justify-center rounded-full"
-          style={{
-            backgroundColor: isCancelled ? "#FDF3F0" : isPaid ? "#F0FDF4" : "#EDE3D9",
-          }}
+          style={{ backgroundColor: cfg.iconBg }}
         >
-          {isCancelled ? (
-            <AlertTriangle size={44} style={{ color: "#D97757" }} strokeWidth={1.5} />
-          ) : isPaid ? (
-            <CheckCircle2 size={44} style={{ color: "#16a34a" }} strokeWidth={1.5} />
-          ) : (
-            <Clock size={44} style={{ color: "#C2A98A" }} strokeWidth={1.5} />
-          )}
+          {cfg.icon}
         </div>
 
         <p
           className="mb-1 text-xs font-semibold tracking-[0.2em]"
-          style={{
-            color: isCancelled ? "#D97757" : isPaid ? "#16a34a" : "#C2A98A",
-          }}
+          style={{ color: cfg.labelColor }}
         >
-          {isCancelled ? "ORDER CANCELLED" : isPaid ? "ORDER CONFIRMED" : "ORDER PLACED"}
+          {cfg.label}
         </p>
-
         <h1 className="font-display text-3xl" style={{ color: "#2B2B2B" }}>
-          {isCancelled ? "Order Cancelled" : isPaid ? "Payment Successful!" : "Almost there!"}
+          {cfg.title}
         </h1>
-
         <p className="mt-2 text-sm" style={{ color: "#7A6E67" }}>
-          {isCancelled
-            ? "This order has been cancelled."
-            : isPaid
-            ? "Your order is confirmed and will be processed shortly."
-            : "Complete your payment to confirm this order."}
+          {cfg.subtitle}
         </p>
 
         {/* Order number chip */}
-        <div
-          className="mt-4 rounded-xl px-5 py-2.5"
-          style={{ backgroundColor: "#EDE3D9" }}
-        >
+        <div className="mt-4 rounded-xl px-5 py-2.5" style={{ backgroundColor: "#EDE3D9" }}>
           <span className="text-xs font-semibold tracking-widest" style={{ color: "#7A6E67" }}>
             ORDER
           </span>
@@ -110,8 +125,8 @@ export default function OrderSuccessPage() {
         </div>
       </div>
 
-      {/* ── Payment failure warning ────────────────────────── */}
-      {paymentFailed && !isPaid && (
+      {/* ── Payment failed warning ────────────────────────── */}
+      {paymentFailed && isUnpaid && (
         <div
           className="mb-5 rounded-xl border p-4 animate-fade-in"
           style={{ borderColor: "#D97757", backgroundColor: "#FDF3F0" }}
@@ -123,7 +138,7 @@ export default function OrderSuccessPage() {
             </p>
           </div>
           <p className="mt-1 text-xs" style={{ color: "#7A6E67" }}>
-            Your order is saved. Please try paying again — you won't be charged twice.
+            Your order is saved. You won't be charged twice — try again below.
           </p>
         </div>
       )}
@@ -149,7 +164,7 @@ export default function OrderSuccessPage() {
                   {item.variant_detail} · Qty {item.quantity}
                 </p>
               </div>
-              <p className="shrink-0 text-sm font-semibold" style={{ color: "#2B2B2B" }}>
+              <p className="text-sm font-semibold" style={{ color: "#2B2B2B" }}>
                 ₹{parseFloat(item.line_total).toLocaleString("en-IN")}
               </p>
             </div>
@@ -175,8 +190,10 @@ export default function OrderSuccessPage() {
               )}
             </span>
           </div>
-          <div className="flex justify-between border-t pt-2.5" style={{ borderColor: "#E5DCD3" }}>
-            <span className="font-semibold" style={{ color: "#2B2B2B" }}>Total</span>
+          <div className="flex justify-between border-t pt-2" style={{ borderColor: "#E5DCD3" }}>
+            <span className="font-semibold" style={{ color: "#2B2B2B" }}>
+              {isPaid ? "Total Paid" : "Total"}
+            </span>
             <span className="font-display text-xl" style={{ color: "#2B2B2B" }}>
               ₹{parseFloat(order.total_amount).toLocaleString("en-IN")}
             </span>
@@ -202,26 +219,29 @@ export default function OrderSuccessPage() {
           className="border-t px-6 py-3 flex items-center justify-between"
           style={{
             borderColor:     "#E5DCD3",
-            backgroundColor: isPaid ? "#F0FDF4" : "#FFF8EE",
+            backgroundColor: isPaid ? "#F0FDF4" : isCancelled ? "#FDF3F0" : "#FFF8EE",
           }}
         >
           <div className="flex items-center gap-2">
-            <CreditCard size={13} style={{ color: isPaid ? "#16a34a" : "#D97757" }} />
+            <CreditCard
+              size={13}
+              style={{ color: isPaid ? "#16a34a" : isCancelled ? "#9CA3AF" : "#D97757" }}
+            />
             <span
               className="text-xs font-semibold"
-              style={{ color: isPaid ? "#16a34a" : "#D97757" }}
+              style={{ color: isPaid ? "#16a34a" : isCancelled ? "#9CA3AF" : "#D97757" }}
             >
-              {isPaid ? "Payment Completed" : "Payment Pending"}
+              {isPaid ? "Payment Complete" : isCancelled ? "Order Cancelled" : "Payment Pending"}
             </span>
           </div>
           <span
             className="rounded-full px-2.5 py-0.5 text-[10px] font-bold tracking-widest"
             style={{
-              backgroundColor: isPaid ? "#dcfce7" : "#FEF3C7",
-              color:           isPaid ? "#16a34a" : "#D97757",
+              backgroundColor: isPaid ? "#dcfce7" : isCancelled ? "#f3f4f6" : "#FEF3C7",
+              color:           isPaid ? "#16a34a" : isCancelled ? "#9CA3AF" : "#D97757",
             }}
           >
-            {isPaid ? "PAID" : "UNPAID"}
+            {isPaid ? "PAID" : isCancelled ? "CANCELLED" : "UNPAID"}
           </span>
         </div>
       </div>
@@ -229,12 +249,12 @@ export default function OrderSuccessPage() {
       {/* ── CTAs ──────────────────────────────────────────── */}
       <div className="mt-6 flex flex-col gap-3">
 
-        {/* Pay Now — only shown when UNPAID and not cancelled */}
-        {!isPaid && !isCancelled && (
+        {/* Pay Now — only when UNPAID and not cancelled */}
+        {isUnpaid && (
           <button
             onClick={handlePayNow}
             disabled={isPaying}
-            className="btn-primary w-full justify-center text-base"
+            className="btn-primary w-full justify-center py-3.5 text-sm"
           >
             {isPaying ? (
               <span className="flex items-center gap-2">
@@ -250,21 +270,22 @@ export default function OrderSuccessPage() {
           </button>
         )}
 
-        <div className="flex gap-3">
+        {/* Secondary CTAs */}
+        <div className="flex flex-col gap-3 sm:flex-row">
           <Link to={ROUTES.ORDERS} className="btn-primary flex-1 justify-center">
             <Package size={14} />
-            My Orders
+            {isPaid ? "Track Order" : "My Orders"}
             <ArrowRight size={14} />
           </Link>
           <Link to={ROUTES.SHOP} className="btn-outline flex-1 justify-center">
             <ShoppingBag size={14} />
-            Shop More
+            Continue Shopping
           </Link>
         </div>
       </div>
 
-      {/* Security note */}
-      {!isPaid && !isCancelled && (
+      {/* Security note for unpaid */}
+      {isUnpaid && (
         <p className="mt-4 text-center text-[10px]" style={{ color: "#7A6E67" }}>
           🔒 Payments secured by Razorpay · 256-bit SSL encryption
         </p>

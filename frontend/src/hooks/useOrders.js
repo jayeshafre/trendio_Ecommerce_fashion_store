@@ -1,23 +1,23 @@
 /**
- * useOrders.js — React Query hooks for orders ONLY
+ * useOrders.js — React Query hooks for orders
  *
- * Address hooks have moved to useProfile.js (users module)
+ * NOTE: usePlaceOrder is intentionally removed.
+ * CheckoutPage now calls ordersApi.placeOrder() directly so it can
+ * immediately chain the Razorpay modal after order creation —
+ * a useMutation onSuccess callback fires too late for this flow.
  *
  * Exports:
  *   useOrders()            → paginated order history
  *   useOrderDetail(id)     → single order (full)
- *   usePlaceOrder()        → POST /orders/
  *   useCancelOrder()       → POST /orders/{id}/cancel/
  *   useAdminOrders()       → GET  /orders/admin/ (admin only)
  *   useAdminUpdateStatus() → PATCH /orders/admin/{id}/status/
  */
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
-import { useNavigate } from "react-router-dom";
 import { ordersApi } from "@api/orders.api";
-import { QUERY_KEYS, ROUTES } from "@constants";
+import { QUERY_KEYS } from "@constants";
 import { getApiError } from "@utils";
-import useCartStore from "@store/cartStore";
 
 // ── useOrders ─────────────────────────────────────────────────
 export function useOrders(params = {}) {
@@ -41,34 +41,6 @@ export function useOrderDetail(id) {
     },
     enabled:   !!id,
     staleTime: 15 * 1000,
-  });
-}
-
-// ── usePlaceOrder ─────────────────────────────────────────────
-export function usePlaceOrder() {
-  const queryClient = useQueryClient();
-  const navigate    = useNavigate();
-  const clearCart   = useCartStore((s) => s.clearCart);
-
-  return useMutation({
-    mutationFn: (payload) => ordersApi.placeOrder(payload),
-    onSuccess: ({ data }) => {
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ORDERS.ALL });
-      queryClient.invalidateQueries({ queryKey: ["cart"] });
-      clearCart();
-      toast.success("Order placed successfully!");
-      navigate(`/order/success/${data.id}`);
-    },
-    onError: (err) => {
-      const error = err.response?.data;
-      if (error?.stock_errors) {
-        error.stock_errors.forEach((e) => {
-          toast.error(`${e.product}: ${e.issue}`, { duration: 5000 });
-        });
-      } else {
-        toast.error(getApiError(err));
-      }
-    },
   });
 }
 
