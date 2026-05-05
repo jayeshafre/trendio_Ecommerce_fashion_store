@@ -15,6 +15,9 @@ from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from drf_spectacular.utils import extend_schema
+from django.shortcuts import get_object_or_404
+from django.db.models import Q, Count
+from rest_framework.pagination import PageNumberPagination
 
 from .models import UserAddress
 from .serializers import (
@@ -327,3 +330,148 @@ class ChangePasswordView(APIView):
 
         logger.info(f"Password changed for: {request.user.email}")
         return Response({"message": "Password changed. Please sign in again."})
+    
+# ── Admin permission (reuse pattern from orders) ──────────────
+class IsAdminUser(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return request.user.is_authenticated and request.user.role == "admin"
+ 
+ 
+class UserAdminPagination(PageNumberPagination):
+    page_size             = 15
+    page_size_query_param = "page_size"
+    max_page_size         = 100
+ 
+ 
+# ── Admin: User List ──────────────────────────────────────────
+class AdminUserListView(APIView):
+    """
+    GET /auth/admin/users/
+ 
+    Query params:
+      ?search=       → filter by email, first_name, last_name
+      ?is_active=    → true / false
+      ?role=         → customer / admin
+      ?page=         → pagination
+    """
+    permission_classes = [IsAdminUser]
+ 
+    def get(self, request):
+        qs = User.objects.all().order_by("-date_joined")
+ 
+        # Filters
+        search    = request.query_params.get("search", "").strip()
+        is_active = request.query_params.get("is_active")
+        role      = request.query_params.get("role")
+ 
+        if search:
+            qs = qs.filter(
+                Q(email__icontains=search)      |
+                Q(first_name__icontains=search) |
+                Q(last_name__icontains=search)  |
+                Q(phone__icontains=search)
+            )
+ 
+        if is_active is not None:
+            qs = qs.filter(is_active=(is_active.lower() == "true"))
+ 
+        if role:
+            qs = qs.filter(role=role)
+ 
+        # Pagination
+        paginator = UserAdminPagination()
+        page      = paginator.paginate_queryset(qs, request)
+ 
+        data = [
+            {
+                "id":          str(u.id),
+                "email":       u.email,
+                "full_name":   u.get_full_name() or "—",
+                "phone":       u.phone or "—",
+                "role":        u.role,
+                "is_active":   u.is_active,
+                "is_verified": u.is_verified,
+                "date_joined": u.date_joined.isoformat(),
+            }
+            for u in page
+        ]
+ 
+        return paginator.get_paginated_response(data)
+ 
+ 
+# ── Admin: User Detail ────────────────────────────────────────
+class AdminUserDetailView(APIView):
+    """
+    GET /auth/admin/users/{id}/
+    Returns full user profile + order summary for admin view.
+    """
+    permission_classes = [IsAdminUser]
+ 
+    def get(self, request, pk):
+        from apps.orders.models import Order
+ 
+        user = get_object_or_404(User, id=pk)
+ 
+        order_summary = user.orders.aggregate(
+            total_orders  = Count("id"),
+            total_spent   = Sum("total_amount"),
+        )
+ 
+        return Response({
+            "id":           str(user.id),
+            "email":        user.email,
+            "first_name":   user.first_name,
+            "last_name":    user.last_name,
+            "phone":        user.phone or "—",
+            "role":         user.role,
+            "is_active":    user.is_active,
+            "is_verified":  user.is_verified,
+            "date_joined":  user.date_joined.isoformat(),
+            "last_login":   user.last_login.isoformat() if user.last_login else None,
+            "order_summary": {
+                "total_orders": order_summary["total_orders"] or 0,
+                "total_spent":  float(order_summary["total_spent"] or 0),
+            },
+        })
+ 
+ 
+# ── Admin: Toggle User Active (Soft Delete) ───────────────────
+class AdminUserToggleView(APIView):
+    """
+    PATCH /auth/admin/users/{id}/toggle/
+ 
+    Soft delete pattern — toggles is_active.
+    Deactivated users cannot log in (handled by Django auth).
+    Cannot deactivate another admin or yourself.
+    """
+    permission_classes = [IsAdminUser]
+ 
+    def patch(self, request, pk):
+        user = get_object_or_404(User, id=pk)
+ 
+        # Safety guards
+        if str(user.id) == str(request.user.id):
+            return Response(
+                {"detail": "You cannot deactivate your own account."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+ 
+        if user.role == "admin":
+            return Response(
+                {"detail": "Admin accounts cannot be deactivated via this endpoint."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+ 
+        # Toggle
+        user.is_active = not user.is_active
+        user.save(update_fields=["is_active"])
+ 
+        action = "activated" if user.is_active else "deactivated"
+        logger.info(
+            f"Admin {request.user.email} {action} user {user.email}"
+        )
+ 
+        return Response({
+            "message":   f"User {user.email} has been {action}.",
+            "is_active": user.is_active,
+        })

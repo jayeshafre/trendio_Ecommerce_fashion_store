@@ -6,6 +6,9 @@ export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localho
 export const ACCESS_TOKEN_KEY  = "trendio_access";
 export const REFRESH_TOKEN_KEY = "trendio_refresh";
 
+export const AI_BASE_URL = import.meta.env.VITE_AI_BASE_URL || "http://localhost:8001";
+export const AI_SECRET_KEY = import.meta.env.VITE_AI_SECRET_KEY || "";
+
 // ─── User Roles ─────────────────────────────────────────────
 export const USER_ROLES = {
   ADMIN:    "admin",

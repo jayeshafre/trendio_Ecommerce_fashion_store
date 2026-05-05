@@ -6,7 +6,7 @@ Addresses have been moved to the users module (/api/v1/auth/addresses/).
 from django.urls import path
 from .views import (
     OrderListCreateView, OrderDetailView, OrderCancelView,
-    AdminOrderListView, AdminOrderStatusView,
+    AdminOrderListView, AdminOrderStatusView,AdminDashboardView
 )
 
 app_name = "orders"
@@ -15,6 +15,7 @@ urlpatterns = [
     # ── Admin (before <uuid:pk>/) ──────────────────────────
     path("admin/",                  AdminOrderListView.as_view(),   name="admin-order-list"),
     path("admin/<uuid:pk>/status/", AdminOrderStatusView.as_view(), name="admin-order-status"),
+    path("admin/dashboard/", AdminDashboardView.as_view(), name="admin-dashboard"),
 
     # ── Customer orders ────────────────────────────────────
     path("",                  OrderListCreateView.as_view(), name="order-list"),

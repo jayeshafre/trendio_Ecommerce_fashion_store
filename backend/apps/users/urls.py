@@ -23,6 +23,9 @@ from .views import (
     OTPVerifyView,
     RegisterView,
     ResetPasswordView,
+    AdminUserListView,
+    AdminUserDetailView,
+    AdminUserToggleView,
 )
 
 app_name = "users"
@@ -47,4 +50,11 @@ urlpatterns = [
     path("password/forgot/", ForgotPasswordView.as_view(), name="password-forgot"),
     path("password/reset/",  ResetPasswordView.as_view(),  name="password-reset"),
     path("password/change/", ChangePasswordView.as_view(), name="password-change"),
+
+    # ── Admin: User Management ─────────────────────────────  ← NEW BLOCK
+    path("admin/users/",                  AdminUserListView.as_view(),   name="admin-user-list"),
+    path("admin/users/<uuid:pk>/",        AdminUserDetailView.as_view(), name="admin-user-detail"),
+    path("admin/users/<uuid:pk>/toggle/", AdminUserToggleView.as_view(), name="admin-user-toggle"),
+
+
 ]
