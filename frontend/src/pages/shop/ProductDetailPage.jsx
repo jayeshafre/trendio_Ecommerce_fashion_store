@@ -287,6 +287,10 @@ export default function ProductDetailPage() {
           </div>
         </div>
       </div>
+      <div className="mt-12">
+        <SimilarProducts productId={product.id} />
+      </div>
+
     </div>
   );
 }
