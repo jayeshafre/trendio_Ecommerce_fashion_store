@@ -16,6 +16,7 @@ import ProductImageGallery  from "@components/product/ProductImageGallery";
 import VariantSelector      from "@components/product/VariantSelector";
 import AddToCartButton      from "@components/cart/AddToCartButton";
 import { formatCurrency }   from "@utils";
+import SimilarProducts from "@components/product/SimilarProducts";
 
 // ── Normalize product for wishlist storage ────────────────────
 // The detail API has images[] but no primary_image field.

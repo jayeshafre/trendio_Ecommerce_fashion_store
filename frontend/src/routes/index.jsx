@@ -25,11 +25,12 @@ const OrdersPage      = lazy(() => import("@pages/account/OrdersPage"));
 const OrderDetailPage = lazy(() => import("@pages/account/OrderDetailPage"));
 const ProfilePage     = lazy(() => import("@pages/account/ProfilePage"));
 const WishlistPage    = lazy(() => import("@pages/account/WishlistPage"));
-const AddressesPage   = lazy(() => import("@pages/account/AddressesPage")); // ✅ NEW
+const AddressesPage   = lazy(() => import("@pages/account/AddressesPage")); 
 
 // ─── Admin pages ───────────────────────────────────────────
 const AdminDashboard  = lazy(() => import("@pages/admin/AdminDashboard"));
 const AdminProducts   = lazy(() => import("@pages/admin/AdminProducts"));
+const BulkUploadPage = lazy(() => import("@pages/admin/BulkUploadPage"));
 const AdminOrders     = lazy(() => import("@pages/admin/AdminOrders"));
 const AdminUsers      = lazy(() => import("@pages/admin/AdminUsers"));
 
@@ -93,6 +94,7 @@ export const router = createBrowserRouter([
         children: [
           { index: true,      element: <S><AdminDashboard /></S> },
           { path: "products", element: <S><AdminProducts /></S> },
+          { path: "products/bulk-upload",  element: <S><BulkUploadPage /></S> }, 
           { path: "orders",   element: <S><AdminOrders /></S> },
           { path: "users",    element: <S><AdminUsers /></S> },
         ],
