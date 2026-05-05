@@ -9,6 +9,7 @@ import { Package, ChevronRight, Filter, ShoppingBag } from "lucide-react";
 import { useOrders } from "@hooks/useOrders";
 import { ROUTES } from "@constants";
 import OrderStatusBadge from "./components/OrderStatusBadge";
+import { getImageUrl } from "@utils";
 
 const STATUS_FILTERS = [
   { label: "All",       value: "" },
@@ -112,12 +113,21 @@ export default function OrdersPage() {
               <div className="flex items-start justify-between gap-4">
                 {/* Left */}
                 <div className="flex gap-4">
-                  <div
-                    className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg"
-                    style={{ backgroundColor: "#EDE3D9" }}
-                  >
-                    <Package size={20} style={{ color: "#C2A98A" }} />
-                  </div>
+                  <div className="h-12 w-12 shrink-0 rounded-lg overflow-hidden"
+  style={{ backgroundColor: "#EDE3D9" }}>
+  {order.first_item_image ? (
+    <img
+      src={getImageUrl(order.first_item_image)}
+      alt={order.order_number}
+      className="h-full w-full object-cover"
+      onError={(e) => { e.target.style.display = "none"; }}
+    />
+  ) : (
+    <div className="flex h-full items-center justify-center">
+      <Package size={20} style={{ color: "#C2A98A" }} />
+    </div>
+  )}
+</div>
                   <div>
                     <p className="font-display text-base font-semibold" style={{ color: "#2B2B2B" }}>
                       {order.order_number}

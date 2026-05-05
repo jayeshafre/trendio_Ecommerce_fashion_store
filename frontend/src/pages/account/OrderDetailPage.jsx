@@ -14,6 +14,7 @@ import { useOrderDetail, useCancelOrder } from "@hooks/useOrders";
 import PaymentButton from "@components/payments/PaymentButton";
 import OrderStatusBadge from "./components/OrderStatusBadge";
 import { ROUTES } from "@constants";
+import { getImageUrl } from "@utils";
 
 export default function OrderDetailPage() {
   const { id }     = useParams();
@@ -95,10 +96,21 @@ export default function OrderDetailPage() {
             <div className="divide-y" style={{ borderColor: "#E5DCD3" }}>
               {order.items?.map((item) => (
                 <div key={item.id} className="flex items-center gap-4 px-6 py-4">
-                  <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg"
-                    style={{ backgroundColor: "#EDE3D9" }}>
-                    <Package size={18} style={{ color: "#C2A98A" }} />
-                  </div>
+                  <div className="h-14 w-14 shrink-0 rounded-lg overflow-hidden"
+  style={{ backgroundColor: "#EDE3D9" }}>
+  {item.product_image ? (
+    <img
+      src={getImageUrl(item.product_image)}
+      alt={item.product_title}
+      className="h-full w-full object-cover"
+      onError={(e) => { e.target.style.display = "none"; }}
+    />
+  ) : (
+    <div className="flex h-full items-center justify-center">
+      <Package size={18} style={{ color: "#C2A98A" }} />
+    </div>
+  )}
+</div>
                   <div className="flex-1 min-w-0">
                     <p className="truncate text-sm font-medium" style={{ color: "#2B2B2B" }}>
                       {item.product_title}

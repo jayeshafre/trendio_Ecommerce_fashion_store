@@ -54,6 +54,8 @@ class UserAddressWriteSerializer(serializers.ModelSerializer):
 
 # ── Order Item ────────────────────────────────────────────────
 class OrderItemSerializer(serializers.ModelSerializer):
+    product_image = serializers.SerializerMethodField()
+
     class Meta:
         model  = OrderItem
         fields = [
@@ -63,14 +65,20 @@ class OrderItemSerializer(serializers.ModelSerializer):
             "quantity",
             "unit_price",
             "line_total",
+            "product_image", 
         ]
 
+    def get_product_image(self, obj):             
+        if obj.product and obj.product.primary_image:
+            return obj.product.primary_image
+        return None
 
 # ── Order List (lightweight for history page) ─────────────────
 class OrderListSerializer(serializers.ModelSerializer):
     item_count        = serializers.SerializerMethodField()
     status_display    = serializers.CharField(source="get_status_display", read_only=True)
     payment_display   = serializers.CharField(source="get_payment_status_display", read_only=True)
+    first_item_image  = serializers.SerializerMethodField()
 
     class Meta:
         model  = Order
@@ -80,11 +88,18 @@ class OrderListSerializer(serializers.ModelSerializer):
             "payment_status", "payment_display",
             "payment_method",
             "total_amount", "item_count",
+            "first_item_image",  
             "placed_at",
         ]
 
     def get_item_count(self, obj):
         return obj.items.count()
+    
+    def get_first_item_image(self, obj):          
+        first = obj.items.select_related("product").first()
+        if first and first.product and first.product.primary_image:
+            return first.product.primary_image
+        return None
 
 
 # ── Order Detail (full, with items + shipping) ────────────────
