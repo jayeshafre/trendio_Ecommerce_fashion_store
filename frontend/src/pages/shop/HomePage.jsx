@@ -77,38 +77,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── Categories ───────────────────────────────── */}
-      {categories.length > 0 && (
-        <section className="mx-auto max-w-[1400px] px-4 py-10 md:px-6">
-          <div className="mb-5 flex items-center justify-between">
-            <h2
-              className="text-xl font-bold"
-              style={{ fontFamily: "'Playfair Display', serif", color: "#2B2B2B" }}
-            >
-              Shop by Category
-            </h2>
-            <Link
-              to="/shop"
-              className="flex items-center gap-1 text-xs font-medium"
-              style={{ color: "#C2A98A" }}
-            >
-              View all <ArrowRight size={12} />
-            </Link>
-          </div>
-          <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-            {categories.map((cat) => (
-              <Link
-                key={cat.slug}
-                to={`/shop?category=${cat.slug}`}
-                className="inline-flex shrink-0 items-center gap-2 rounded-full border px-5 py-2.5 text-sm font-medium transition-all hover:border-[#C2A98A] hover:text-[#C2A98A]"
-                style={{ borderColor: "#E5DCD3", color: "#2B2B2B", backgroundColor: "#fff" }}
-              >
-                {cat.name}
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
+      
 
       {/* ── Featured Products ────────────────────────── */}
       <section className="mx-auto max-w-[1400px] px-4 py-8 md:px-6">

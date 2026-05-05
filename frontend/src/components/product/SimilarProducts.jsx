@@ -54,7 +54,7 @@ export default function SimilarProducts({ productId }) {
           return (
             <Link
               key={p.id}
-              to={`/product/${p.id}`}
+              to={`/product/${p.slug}`}
               className="group cursor-pointer"
             >
               {/* Image */}
