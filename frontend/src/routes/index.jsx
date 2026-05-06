@@ -12,6 +12,7 @@ const ProductDetailPage = lazy(() => import("@pages/shop/ProductDetailPage"));
 const CartPage          = lazy(() => import("@pages/shop/CartPage"));
 const CheckoutPage      = lazy(() => import("@pages/shop/CheckoutPage"));
 const OrderSuccessPage  = lazy(() => import("@pages/shop/OrderSuccessPage"));
+const AISearchPage = lazy(() => import("@pages/shop/AISearchPage"));
 
 
 // ─── Auth pages ────────────────────────────────────────────
@@ -54,7 +55,7 @@ export const router = createBrowserRouter([
       { index: true,           element: <S><HomePage /></S> },
       { path: "shop",          element: <S><ShopPage /></S> },
       { path: "product/:slug", element: <S><ProductDetailPage /></S> },
-      { path: "search",        element: <S><ShopPage /></S> },
+      { path: "search", element: <S><AISearchPage /></S> },
 
       // ─── Guest only routes ──────────────────────────────
       {
