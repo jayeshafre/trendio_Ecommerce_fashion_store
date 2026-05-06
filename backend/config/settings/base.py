@@ -173,6 +173,8 @@ CORS_ALLOWED_ORIGINS = env.list(
 )
 CORS_ALLOW_CREDENTIALS = True
 
+SECURE_CROSS_ORIGIN_OPENER_POLICY = "same-origin-allow-popups"
+
 # ─── Redis / Cache ─────────────────────────────────────────────────────────────
 CACHES = {
     "default": {
@@ -246,3 +248,8 @@ RAZORPAY_WEBHOOK_SECRET = env("RAZORPAY_WEBHOOK_SECRET", default="")
 
 # ─── Email ─────────────────────────────────────────────────────────────────────
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="noreply@trendio.com")
+
+# ─── Google OAuth ──────────────────────────────────────────────────────────────
+GOOGLE_CLIENT_ID = env("GOOGLE_CLIENT_ID", default="")
+
+

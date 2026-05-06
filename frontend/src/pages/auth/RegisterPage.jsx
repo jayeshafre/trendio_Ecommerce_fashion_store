@@ -26,6 +26,7 @@ import toast from "react-hot-toast";
 import OtpInput from "@components/ui/OtpInput";
 import { useOtpTimer } from "@hooks/useOtpTimer";
 import { useRegister, useSendOtp, useVerifyOtp } from "@hooks/useAuth";
+import GoogleAuthButton from "@components/auth/GoogleAuthButton";
 import { ROUTES } from "@constants";
 
 // ─── Password strength helper ────────────────────────────────
@@ -615,6 +616,9 @@ export default function RegisterPage() {
           <span className="text-xs" style={{ color: "#7A6E67" }}>or</span>
           <div className="flex-1 border-t" style={{ borderColor: "#E5DCD3" }} />
         </div>
+
+        {/* ── Google OAuth ─────────────────────────────────── */}
+        <GoogleAuthButton />
 
         {/* ── Continue as Guest ────────────────────────────── */}
         <Link

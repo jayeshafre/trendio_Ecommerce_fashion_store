@@ -164,3 +164,23 @@ export function useChangePassword() {
     },
   });
 }
+
+// useGoogleAuth
+export function useGoogleAuth() {
+  const navigate  = useNavigate();
+  const setTokens = useAuthStore((s) => s.setTokens);
+  const setUser   = useAuthStore((s) => s.setUser);
+
+  return useMutation({
+    mutationFn: (id_token) => authApi.googleAuth({ id_token }),
+    onSuccess: ({ data }) => {
+      setTokens(data.access, data.refresh);
+      setUser(data.user);
+      toast.success("Welcome, " + data.user.first_name + "!");
+      navigate(ROUTES.HOME);
+    },
+    onError: (err) => {
+      toast.error(getApiError(err));
+    },
+  });
+}

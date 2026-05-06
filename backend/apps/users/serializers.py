@@ -252,3 +252,7 @@ class ChangePasswordSerializer(serializers.Serializer):
                 {"new_password2": "New passwords do not match."}
             )
         return attrs
+    
+# ── Google OAuth ──────────────────────────────────────────
+class GoogleAuthSerializer(serializers.Serializer):
+    id_token = serializers.CharField()

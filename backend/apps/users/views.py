@@ -16,13 +16,14 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from drf_spectacular.utils import extend_schema
 from django.shortcuts import get_object_or_404
-from django.db.models import Q, Count
+from django.db.models import Q, Count, Sum
 from rest_framework.pagination import PageNumberPagination
 
 from .models import UserAddress
 from .serializers import (
     ChangePasswordSerializer,
     ForgotPasswordSerializer,
+    GoogleAuthSerializer,
     LoginSerializer,
     LogoutSerializer,
     OTPSendSerializer,
@@ -90,6 +91,39 @@ class LoginView(APIView):
         )
 
 
+class GoogleAuthView(APIView):
+    """
+    POST /api/v1/auth/google/
+    Body: { "id_token": "<google_id_token>" }
+    Returns: { access, refresh, user }
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        serializer = GoogleAuthSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        id_token_str = serializer.validated_data["id_token"]
+
+        try:
+            payload = services.verify_google_token(id_token_str)
+            user    = services.get_or_create_google_user(payload)
+        except ValueError as e:
+            return Response(
+                {"detail": str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        token_data = services.generate_tokens_for_user(user, request)
+        return Response(
+            {
+                "access":  token_data["access"],
+                "refresh": token_data["refresh"],
+                "user":    UserMeSerializer(user).data,
+            },
+            status=status.HTTP_200_OK
+        )
+    
 # ── Logout ────────────────────────────────────────────────────────────────────
 class LogoutView(APIView):
     permission_classes = [permissions.IsAuthenticated]

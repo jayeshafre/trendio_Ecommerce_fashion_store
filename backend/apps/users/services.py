@@ -195,3 +195,66 @@ def _get_client_ip(request):
     if x_forwarded:
         return x_forwarded.split(",")[0].strip()
     return request.META.get("REMOTE_ADDR")
+
+# ── Google OAuth ───────────────────────────────────────────────────────────────
+def verify_google_token(id_token_str):
+    """
+    Verifies a Google id_token using google-auth library.
+    Returns payload dict on success, raises ValueError on failure.
+    """
+    from google.oauth2 import id_token as google_id_token
+    from google.auth.transport import requests as google_requests
+    from django.conf import settings
+
+    try:
+        payload = google_id_token.verify_oauth2_token(
+            id_token_str,
+            google_requests.Request(),
+            settings.GOOGLE_CLIENT_ID,
+        )
+        return payload
+    except Exception as e:
+        logger.warning(f"Google token verification failed: {e}")
+        raise ValueError("Invalid Google token. Please try again.")
+
+
+def get_or_create_google_user(payload):
+    """
+    Finds existing user by google_id or email.
+    Creates a new verified user if not found.
+    Returns user object.
+    """
+    google_id  = payload.get("sub")          # Google's unique user ID
+    email      = payload.get("email", "").lower()
+    first_name = payload.get("given_name", "")
+    last_name  = payload.get("family_name", "")
+
+    if not email:
+        raise ValueError("Google account has no email address.")
+
+    # Case 1: Already linked via google_id
+    user = User.objects.filter(google_id=google_id).first()
+    if user:
+        return user
+
+    # Case 2: Email exists but not linked yet (user registered with email before)
+    user = User.objects.filter(email=email).first()
+    if user:
+        # Link google_id to existing account
+        user.google_id     = google_id
+        user.auth_provider = "google"
+        user.is_verified   = True
+        user.save(update_fields=["google_id", "auth_provider", "is_verified"])
+        return user
+
+    # Case 3: New user — create account
+    user = User.objects.create_user(
+        email          = email,
+        first_name     = first_name,
+        last_name      = last_name or ".",   # last_name required; Google may omit it
+        password       = None,               # No password for OAuth users
+        auth_provider  = "google",
+        google_id      = google_id,
+        is_verified    = True,               # Google already verified the email
+    )
+    return user

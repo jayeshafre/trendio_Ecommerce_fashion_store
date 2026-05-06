@@ -16,6 +16,7 @@ import toast from "react-hot-toast";
 import OtpInput from "@components/ui/OtpInput";
 import { useOtpTimer } from "@hooks/useOtpTimer";
 import { useLogin, useSendOtp, useVerifyOtp } from "@hooks/useAuth";
+import GoogleAuthButton from "@components/auth/GoogleAuthButton";
 import { ROUTES } from "@constants";
 
 // ─── Schemas ─────────────────────────────────────────────────
@@ -257,6 +258,15 @@ export default function LoginPage() {
             {loginMutation.isPending ? "SIGNING IN…" : "SIGN IN TO TRENDIO"}
           </button>
         </form>
+
+        {/* ── Google OAuth Divider ───────────────────────── */}
+<div className="my-4 flex items-center gap-3">
+  <div className="flex-1 border-t" style={{ borderColor: "#E5DCD3" }} />
+  <span className="text-xs" style={{ color: "#7A6E67" }}>or continue with</span>
+  <div className="flex-1 border-t" style={{ borderColor: "#E5DCD3" }} />
+</div>
+
+<GoogleAuthButton />
 
         {/* OTP Login — only shown on mobile tab */}
         {tab === "mobile" && (

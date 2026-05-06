@@ -19,6 +19,9 @@ export const authApi = {
   logout: (data) =>
     axiosClient.post("/auth/logout/", data),
 
+  googleAuth: (data) =>
+    axiosClient.post("/auth/google/", data),
+
   refreshToken: (data) =>
     axiosClient.post("/auth/token/refresh/", data),
 

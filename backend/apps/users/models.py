@@ -38,6 +38,20 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_active   = models.BooleanField(default=True)
     is_staff    = models.BooleanField(default=False)
 
+    # ── OAuth ──────────────────────────────────────────────────
+    auth_provider = models.CharField(
+        max_length=20,
+        default="email",
+        help_text="email | google",
+    )
+    google_id = models.CharField(
+        max_length=255,
+        unique=True,
+        null=True,
+        blank=True,
+        db_index=True,
+    )
+
     # ── Timestamps ─────────────────────────────────────────────
     date_joined = models.DateTimeField(default=timezone.now)
     updated_at  = models.DateTimeField(auto_now=True)
