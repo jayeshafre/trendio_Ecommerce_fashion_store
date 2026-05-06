@@ -177,7 +177,11 @@ export function useGoogleAuth() {
       setTokens(data.access, data.refresh);
       setUser(data.user);
       toast.success("Welcome, " + data.user.first_name + "!");
-      navigate(ROUTES.HOME);
+      if (data.is_new_user) {
+        navigate("/auth/complete-profile");  
+      } else {
+        navigate(ROUTES.HOME);
+      }
     },
     onError: (err) => {
       toast.error(getApiError(err));

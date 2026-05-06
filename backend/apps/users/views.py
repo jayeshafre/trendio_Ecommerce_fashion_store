@@ -115,11 +115,15 @@ class GoogleAuthView(APIView):
             )
 
         token_data = services.generate_tokens_for_user(user, request)
+        is_new_user  = not bool(user.phone)   # new if no phone on record
+
+        logger.info(f"Google OAuth login: {user.email} | new={is_new_user}")
         return Response(
             {
                 "access":  token_data["access"],
                 "refresh": token_data["refresh"],
                 "user":    UserMeSerializer(user).data,
+                "is_new_user":  is_new_user,
             },
             status=status.HTTP_200_OK
         )
