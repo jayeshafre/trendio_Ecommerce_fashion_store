@@ -6,3 +6,4 @@ export { ordersApi }   from "./orders.api";
 export { paymentsApi } from "./payments.api";
 export { adminApi } from "./admin.api";
 export { aiApi } from "./ai.api";
+export { reviewsApi } from "./reviews.api";
