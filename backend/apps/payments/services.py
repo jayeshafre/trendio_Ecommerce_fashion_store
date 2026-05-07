@@ -19,6 +19,7 @@ import razorpay
 from django.conf import settings
 from django.db import transaction
 from rest_framework.exceptions import ValidationError
+from apps.notifications.services import NotificationService
 
 from apps.orders.models import Order
 from .models import Payment
@@ -214,8 +215,7 @@ class PaymentService:
             f"Order {order.order_number} → PAID + CONFIRMED"
         )
 
-        # TODO: trigger order confirmation email (Notifications module)
-        # send_order_confirmation_email.delay(order.id)
+        NotificationService.payment_success(order)
 
         return order
 
@@ -300,6 +300,7 @@ class PaymentService:
                     payment.status         = Payment.Status.FAILED
                     payment.failure_reason = error_description
                     payment.save(update_fields=["status", "failure_reason", "updated_at"])
+                    NotificationService.payment_failed(order)
                     logger.info(f"Webhook: Payment failed for order {razorpay_order_id}")
             except Payment.DoesNotExist:
                 pass

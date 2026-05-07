@@ -11,9 +11,10 @@ from rest_framework.exceptions import ValidationError
 from apps.cart.models import Cart
 from apps.cart.services import CartService
 from apps.products.models import ProductVariant
-from apps.users.models import UserAddress          # ← moved here from orders.models
+from apps.users.models import UserAddress         
 from .models import Order, OrderItem
 from .utils import generate_order_number
+from apps.notifications.services import NotificationService
 
 logger = logging.getLogger(__name__)
 
@@ -167,13 +168,17 @@ class OrderService:
 
         # Step 10: Clear cart
         CartService.clear_cart(cart)
+        NotificationService.order_placed(order)
 
+        NotificationService.order_placed(order)
         logger.info(
             f"Order placed: {order.order_number} | "
             f"User: {user.email} | Total: ₹{total_amount} | Items: {len(order_items)}"
         )
 
+
         return order
+    
 
     @staticmethod
     @transaction.atomic
@@ -198,6 +203,7 @@ class OrderService:
         order.status = Order.Status.CANCELLED
         order.save(update_fields=["status", "updated_at"])
 
+        NotificationService.order_cancelled(order) 
         logger.info(f"Order cancelled: {order.order_number} by {user.email}")
 
         if order.payment_status == Order.PaymentStatus.PAID:
@@ -224,6 +230,7 @@ class OrderService:
         order.status = new_status
         order.save(update_fields=["status", "updated_at"])
 
+        NotificationService.order_status_changed(order, new_status)
         logger.info(f"Order {order.order_number} status: {current} → {new_status}")
 
         return order

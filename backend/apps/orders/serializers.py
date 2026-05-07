@@ -55,6 +55,7 @@ class UserAddressWriteSerializer(serializers.ModelSerializer):
 # ── Order Item ────────────────────────────────────────────────
 class OrderItemSerializer(serializers.ModelSerializer):
     product_image = serializers.SerializerMethodField()
+    product_slug  = serializers.SerializerMethodField() 
 
     class Meta:
         model  = OrderItem
@@ -66,11 +67,17 @@ class OrderItemSerializer(serializers.ModelSerializer):
             "unit_price",
             "line_total",
             "product_image", 
+            "product_slug",
         ]
 
     def get_product_image(self, obj):             
         if obj.product and obj.product.primary_image:
             return obj.product.primary_image
+        return None
+    
+    def get_product_slug(self, obj):               
+        if obj.product:
+            return obj.product.slug
         return None
 
 # ── Order List (lightweight for history page) ─────────────────

@@ -25,7 +25,7 @@ class ReviewService:
         has_delivered = OrderItem.objects.filter(
             product=product,
             order__user=user,
-            order__status=Order.Status.DELIVERED,
+            order__status__in=[Order.Status.DELIVERED, Order.Status.SHIPPED],
         ).exists()
 
         if not has_delivered:
@@ -129,7 +129,7 @@ class ReviewService:
         has_delivered = OrderItem.objects.filter(
             product=product,
             order__user=user,
-            order__status=Order.Status.DELIVERED,
+            order__status__in=[Order.Status.DELIVERED, Order.Status.SHIPPED],
         ).exists()
 
         if not has_delivered:
