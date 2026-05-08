@@ -18,7 +18,7 @@ import OrderStatusBadge from "../account/components/OrderStatusBadge";
 // Mirror backend ALLOWED_TRANSITIONS
 const TRANSITIONS = {
   pending:   ["confirmed", "cancelled"],
-  confirmed: ["shipped",   "cancelled"],
+  confirmed: ["shipped",  "delivered", "cancelled"],
   shipped:   ["delivered"],
   delivered: [],
   cancelled: [],
@@ -171,7 +171,7 @@ export default function AdminOrders() {
 
                   {/* Customer email */}
                   <p className="truncate text-xs" style={{ color: "#7A6E67" }}>
-                    {order.user?.email ?? "—"}
+                    {order.user_email ?? "—"}
                   </p>
 
                   {/* Amount */}

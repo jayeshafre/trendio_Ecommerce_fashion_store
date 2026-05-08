@@ -37,6 +37,7 @@ const AdminProducts   = lazy(() => import("@pages/admin/AdminProducts"));
 const BulkUploadPage = lazy(() => import("@pages/admin/BulkUploadPage"));
 const AdminOrders     = lazy(() => import("@pages/admin/AdminOrders"));
 const AdminUsers      = lazy(() => import("@pages/admin/AdminUsers"));
+const AdminReviews = lazy(() => import("@pages/admin/AdminReviews"));
 
 // ─── Error page ────────────────────────────────────────────
 const NotFoundPage = lazy(() => import("@pages/error/NotFoundPage"));
@@ -83,7 +84,7 @@ export const router = createBrowserRouter([
           { path: "account/orders/:id", element: <S><OrderDetailPage /></S> },
           { path: "account/profile",    element: <S><ProfilePage /></S> },
           { path: "account/wishlist",   element: <S><WishlistPage /></S> },
-          { path: "account/addresses",  element: <S><AddressesPage /></S> }, // ✅ ADDED
+          { path: "account/addresses",  element: <S><AddressesPage /></S> }, 
         ],
       },
     ],
@@ -102,6 +103,7 @@ export const router = createBrowserRouter([
           { path: "products/bulk-upload",  element: <S><BulkUploadPage /></S> }, 
           { path: "orders",   element: <S><AdminOrders /></S> },
           { path: "users",    element: <S><AdminUsers /></S> },
+          { path: "reviews",              element: <S><AdminReviews /></S> },  
         ],
       },
     ],

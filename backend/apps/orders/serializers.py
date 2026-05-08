@@ -86,6 +86,7 @@ class OrderListSerializer(serializers.ModelSerializer):
     status_display    = serializers.CharField(source="get_status_display", read_only=True)
     payment_display   = serializers.CharField(source="get_payment_status_display", read_only=True)
     first_item_image  = serializers.SerializerMethodField()
+    user_email      = serializers.EmailField(source="user.email", read_only=True) 
 
     class Meta:
         model  = Order
@@ -96,6 +97,7 @@ class OrderListSerializer(serializers.ModelSerializer):
             "payment_method",
             "total_amount", "item_count",
             "first_item_image",  
+            "user_email", 
             "placed_at",
         ]
 

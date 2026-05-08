@@ -18,6 +18,12 @@ export const adminApi = {
   getUserDetail: (id) =>
     axiosClient.get(`/auth/admin/users/${id}/`),
 
+  getReviews: (params = {}) =>
+    axiosClient.get("/reviews/admin/", { params }),
+
+  deleteReview: (id) =>
+    axiosClient.delete(`/reviews/admin/${id}/`),
+
   toggleUser: (id) =>
     axiosClient.patch(`/auth/admin/users/${id}/toggle/`),
 };

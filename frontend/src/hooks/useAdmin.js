@@ -61,3 +61,28 @@ export function useToggleUser() {
     onError: (err) => toast.error(getApiError(err)),
   });
 }
+
+// ── Reviews ───────────────────────────────────────────────────
+export function useAdminReviews(params = {}) {
+  return useQuery({
+    queryKey: ["admin-reviews", params],
+    queryFn: async () => {
+      const { data } = await adminApi.getReviews(params);
+      return data;
+    },
+    staleTime: 30 * 1000,
+  });
+}
+
+export function useAdminDeleteReview() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id) => adminApi.deleteReview(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-reviews"] });
+      qc.invalidateQueries({ queryKey: ["admin-dashboard"] });
+      toast.success("Review deleted.");
+    },
+    onError: (err) => toast.error(getApiError(err)),
+  });
+}

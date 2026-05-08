@@ -284,7 +284,7 @@ export default function Navbar() {
     e.preventDefault();
     const q = searchQuery.trim();
     if (q) {
-      navigate(`/shop?q=${encodeURIComponent(q)}`);
+      navigate(`/search?q=${encodeURIComponent(q)}`);
       setSearchOpen(false);
       setSearchQuery("");
       setDropdownOpen(false);

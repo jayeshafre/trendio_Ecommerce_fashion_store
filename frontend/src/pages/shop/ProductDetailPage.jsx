@@ -713,8 +713,10 @@ export default function ProductDetailPage() {
         </div>
       </div>
 
+      
       {/* ── Similar Products ─────────────────────────────── */}
-      <SimilarProducts />
+      
+<SimilarProducts productId={product.id} />
 
       {/* ── Reviews Section ──────────────────────────────── */}
       <ReviewsSection slug={slug} />

@@ -5,7 +5,7 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, ShoppingCart,
-  Package, Users, LogOut,
+  Package, Users, LogOut, MessageSquare,
 } from "lucide-react";
 import useAuthStore from "@store/authStore";
 import toast from "react-hot-toast";
@@ -15,6 +15,7 @@ const NAV = [
   { to: "/admin/orders",   label: "Orders",    icon: ShoppingCart },
   { to: "/admin/products", label: "Products",  icon: Package },
   { to: "/admin/users",    label: "Users",     icon: Users },
+  { to: "/admin/reviews",  label: "Reviews",   icon: MessageSquare },
 ];
 
 export default function AdminSidebar() {

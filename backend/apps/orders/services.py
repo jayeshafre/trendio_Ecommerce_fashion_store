@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 ALLOWED_TRANSITIONS = {
     Order.Status.PENDING:   {Order.Status.CONFIRMED, Order.Status.CANCELLED},
-    Order.Status.CONFIRMED: {Order.Status.SHIPPED,   Order.Status.CANCELLED},
+    Order.Status.CONFIRMED: {Order.Status.SHIPPED,  Order.Status.DELIVERED, Order.Status.CANCELLED},
     Order.Status.SHIPPED:   {Order.Status.DELIVERED},
     Order.Status.DELIVERED: set(),
     Order.Status.CANCELLED: set(),
