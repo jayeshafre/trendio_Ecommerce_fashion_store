@@ -145,8 +145,19 @@ REST_FRAMEWORK = {
         "rest_framework.throttling.UserRateThrottle",
     ],
     "DEFAULT_THROTTLE_RATES": {
-        "anon": "100/hour",
-        "user": "1000/hour",
+        # ── Global ────────────────────────────────────────
+    "anon": "100/hour",
+    "user": "1000/hour",
+
+    # ── Auth endpoints (per-view) ─────────────────────
+    "login":           "5/minute",
+    "register":        "10/hour",
+    "otp_send":        "3/minute",
+    "otp_verify":      "10/minute",
+    "password_forgot": "3/hour",
+    "password_reset":  "5/hour",
+    "password_change": "5/hour",
+    "token_refresh":   "30/minute",
     },
     "EXCEPTION_HANDLER": "apps.users.exceptions.custom_exception_handler",
 }

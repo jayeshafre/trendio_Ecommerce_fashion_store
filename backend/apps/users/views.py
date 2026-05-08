@@ -19,6 +19,14 @@ from django.shortcuts import get_object_or_404
 from django.db.models import Q, Count, Sum
 from rest_framework.pagination import PageNumberPagination
 
+from apps.users.throttles import RegisterRateThrottle
+from apps.users.throttles import LoginRateThrottle
+from apps.users.throttles import OTPSendRateThrottle
+from apps.users.throttles import OTPVerifyRateThrottle
+from apps.users.throttles import PasswordForgotRateThrottle
+from apps.users.throttles import PasswordResetRateThrottle
+from apps.users.throttles import PasswordChangeRateThrottle
+
 from .models import UserAddress
 from .serializers import (
     ChangePasswordSerializer,
@@ -35,6 +43,16 @@ from .serializers import (
     UserAddressWriteSerializer,
     UserMeSerializer,
 )
+
+from apps.users.throttles import (
+    LoginRateThrottle,
+    RegisterRateThrottle,
+    OTPSendRateThrottle,
+    OTPVerifyRateThrottle,
+    PasswordForgotRateThrottle,
+    PasswordResetRateThrottle,
+    PasswordChangeRateThrottle,
+)
 from . import services
 
 logger = logging.getLogger(__name__)
@@ -45,6 +63,7 @@ User   = get_user_model()
 class RegisterView(generics.CreateAPIView):
     serializer_class   = RegisterSerializer
     permission_classes = [permissions.AllowAny]
+    throttle_classes   = [RegisterRateThrottle] 
 
     @extend_schema(tags=["Auth"])
     def create(self, request, *args, **kwargs):
@@ -70,6 +89,7 @@ class RegisterView(generics.CreateAPIView):
 # ── Login ──────────────────────────────────────────────────────────────────────
 class LoginView(APIView):
     permission_classes = [permissions.AllowAny]
+    throttle_classes   = [LoginRateThrottle]
 
     @extend_schema(tags=["Auth"], request=LoginSerializer)
     def post(self, request):
@@ -221,6 +241,7 @@ class AddressDetailView(generics.RetrieveUpdateDestroyAPIView):
 # ── OTP Send ──────────────────────────────────────────────────────────────────
 class OTPSendView(APIView):
     permission_classes = [permissions.AllowAny]
+    throttle_classes   = [OTPSendRateThrottle]
 
     @extend_schema(tags=["Auth | OTP"], request=OTPSendSerializer)
     def post(self, request):
@@ -259,6 +280,7 @@ class OTPSendView(APIView):
 # ── OTP Verify ────────────────────────────────────────────────────────────────
 class OTPVerifyView(APIView):
     permission_classes = [permissions.AllowAny]
+    throttle_classes   = [OTPVerifyRateThrottle] 
 
     @extend_schema(tags=["Auth | OTP"], request=OTPVerifySerializer)
     def post(self, request):
@@ -305,6 +327,7 @@ class OTPVerifyView(APIView):
 # ── Forgot Password ───────────────────────────────────────────────────────────
 class ForgotPasswordView(APIView):
     permission_classes = [permissions.AllowAny]
+    throttle_classes   = [PasswordForgotRateThrottle]
 
     @extend_schema(tags=["Auth | Password"], request=ForgotPasswordSerializer)
     def post(self, request):
@@ -326,6 +349,7 @@ class ForgotPasswordView(APIView):
 # ── Reset Password ────────────────────────────────────────────────────────────
 class ResetPasswordView(APIView):
     permission_classes = [permissions.AllowAny]
+    throttle_classes   = [PasswordResetRateThrottle]
 
     @extend_schema(tags=["Auth | Password"], request=ResetPasswordSerializer)
     def post(self, request):
@@ -356,6 +380,7 @@ class ResetPasswordView(APIView):
 # ── Change Password (authenticated) ───────────────────────────────────────────
 class ChangePasswordView(APIView):
     permission_classes = [permissions.IsAuthenticated]
+    throttle_classes   = [PasswordChangeRateThrottle]
 
     @extend_schema(tags=["Auth | Password"], request=ChangePasswordSerializer)
     def post(self, request):
