@@ -35,7 +35,23 @@ AWS_S3_OBJECT_PARAMETERS = {"CacheControl": "max-age=86400"}
 AWS_DEFAULT_ACL = None
 AWS_S3_FILE_OVERWRITE = False
 
-DEFAULT_FILE_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
+
+STORAGES = {
+    "default": {
+        "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+        "OPTIONS": {
+            "bucket_name":    AWS_STORAGE_BUCKET_NAME,
+            "region_name":    AWS_S3_REGION_NAME,
+            "custom_domain":  AWS_S3_CUSTOM_DOMAIN,
+            "object_parameters": {"CacheControl": "max-age=86400"},
+            "file_overwrite": False,
+            "default_acl":    None,
+        },
+    },
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
 MEDIA_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/"
 
 # ─── Sentry Error Tracking ────────────────────────────────
