@@ -38,7 +38,8 @@ THIRD_PARTY_APPS = [
     "corsheaders",
     "django_filters",
     "drf_spectacular",
-    "storages",
+    "cloudinary_storage",
+    "cloudinary",
     "rest_framework_simplejwt.token_blacklist",
     "django_extensions",
 ]
@@ -262,5 +263,3 @@ DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="noreply@trendio.com")
 
 # ─── Google OAuth ──────────────────────────────────────────────────────────────
 GOOGLE_CLIENT_ID = env("GOOGLE_CLIENT_ID", default="")
-
-

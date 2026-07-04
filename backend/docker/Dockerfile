@@ -9,14 +9,24 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Install poetry
-RUN pip install --no-cache-dir poetry==1.8.3
+# Install poetry (2.x required — pyproject.toml declares poetry-core>=2.0.0)
+# plus the export plugin, which is no longer bundled with poetry core
+RUN pip install --no-cache-dir "poetry>=2.0,<3.0" poetry-plugin-export
 
 # Copy dependency files only (cache layer)
 COPY pyproject.toml poetry.lock ./
 
-# Export to requirements.txt and install
-RUN poetry export -f requirements.txt --output requirements.txt --without-hashes --without dev
+# Whether to include dev-group deps (pytest, black, django-debug-toolbar, etc.)
+# Local docker-compose testing runs config.settings.dev, which needs
+# django-debug-toolbar — so compose passes INSTALL_DEV=true as a build arg.
+# Render/production builds omit this arg, defaulting to false, keeping
+# the image lean since config.settings.prod never imports these packages.
+ARG INSTALL_DEV=false
+RUN if [ "$INSTALL_DEV" = "true" ]; then \
+    poetry export -f requirements.txt --output requirements.txt --without-hashes --with dev; \
+    else \
+    poetry export -f requirements.txt --output requirements.txt --without-hashes --without dev; \
+    fi
 RUN pip install --no-cache-dir -r requirements.txt
 
 # ─── Stage 2: Runtime ──────────────────────────────────────

@@ -41,12 +41,12 @@ export default defineConfig({
     sourcemap: false,
     rollupOptions: {
       output: {
-        manualChunks: {
-          vendor:  ["react", "react-dom", "react-router-dom"],
-          query:   ["@tanstack/react-query"],
-          ui:      ["@radix-ui/react-dialog", "@radix-ui/react-toast"],
-          utils:   ["axios", "zustand", "date-fns"],
-        },
+        //manualChunks: {
+          //vendor:  ["react", "react-dom", "react-router-dom"],
+          //query:   ["@tanstack/react-query"],
+         // ui:      ["@radix-ui/react-dialog", "@radix-ui/react-toast"],
+         // utils:   ["axios", "zustand", "date-fns"],
+        //},
       },
     },
   },

@@ -25,34 +25,21 @@ SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = "DENY"
 
-# ─── AWS S3 for Media ─────────────────────────────────────
-AWS_ACCESS_KEY_ID = env("AWS_ACCESS_KEY_ID")
-AWS_SECRET_ACCESS_KEY = env("AWS_SECRET_ACCESS_KEY")
-AWS_STORAGE_BUCKET_NAME = env("AWS_STORAGE_BUCKET_NAME")
-AWS_S3_REGION_NAME = env("AWS_S3_REGION_NAME", default="ap-south-1")
-AWS_S3_CUSTOM_DOMAIN = f"{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com"
-AWS_S3_OBJECT_PARAMETERS = {"CacheControl": "max-age=86400"}
-AWS_DEFAULT_ACL = None
-AWS_S3_FILE_OVERWRITE = False
-
+# ─── Cloudinary for Media ─────────────────────────────────
+CLOUDINARY_STORAGE = {
+    "CLOUD_NAME": env("CLOUDINARY_CLOUD_NAME"),
+    "API_KEY": env("CLOUDINARY_API_KEY"),
+    "API_SECRET": env("CLOUDINARY_API_SECRET"),
+}
 
 STORAGES = {
     "default": {
-        "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
-        "OPTIONS": {
-            "bucket_name":    AWS_STORAGE_BUCKET_NAME,
-            "region_name":    AWS_S3_REGION_NAME,
-            "custom_domain":  AWS_S3_CUSTOM_DOMAIN,
-            "object_parameters": {"CacheControl": "max-age=86400"},
-            "file_overwrite": False,
-            "default_acl":    None,
-        },
+        "BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage",
     },
     "staticfiles": {
         "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
     },
 }
-MEDIA_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/"
 
 # ─── Sentry Error Tracking ────────────────────────────────
 sentry_sdk.init(
