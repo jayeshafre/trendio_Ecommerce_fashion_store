@@ -51,6 +51,7 @@ RUN chmod +x /entrypoint.sh
 
 # Non-root user for security
 RUN addgroup --system trendio && adduser --system --group trendio
+RUN mkdir -p /app/staticfiles /app/media && chown -R trendio:trendio /app
 USER trendio
 
 EXPOSE 8000
