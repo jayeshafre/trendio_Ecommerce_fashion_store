@@ -1,6 +1,4 @@
 """
-Bulk Upload Views — REPLACE the old bulk_upload_view.py with this file.
-
 Endpoints:
   POST   /api/v1/products/bulk-upload/        upload CSV → triggers Celery task
   GET    /api/v1/products/bulk-upload/         list all uploads (admin)
@@ -100,8 +98,29 @@ class BulkUploadListCreateView(APIView):
             created_by = request.user,
         )
 
-        # Fire-and-forget — Celery processes in background
-        process_bulk_upload.delay(str(upload.id))
+        # Run synchronously — no Celery worker on the free Render tier yet.
+        # Calling the task directly (not .delay()/.apply_async()) executes the
+        # same function body in-process, no broker required. Fine for small
+        # CSVs; revisit once a paid worker is added for large uploads.
+        upload.status = BulkUpload.Status.PROCESSING
+        upload.save(update_fields=["status"])
+
+        try:
+            process_bulk_upload(str(upload.id))
+        except Exception as e:
+            logger.error(f"Bulk upload processing failed for {upload.id}: {e}")
+            upload.refresh_from_db()
+            return Response(
+                {
+                    "id": str(upload.id),
+                    "status": upload.status,
+                    "message": "Upload received, but processing failed. Check the error report or server logs.",
+                    "poll_url": f"/api/v1/products/bulk-upload/{upload.id}/",
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        upload.refresh_from_db()
 
         logger.info(
             f"BulkUpload {upload.id} created by {request.user.email}. "
@@ -112,10 +131,10 @@ class BulkUploadListCreateView(APIView):
             {
                 "id":      str(upload.id),
                 "status":  upload.status,
-                "message": "Upload received. Processing started in the background.",
+                "message": "Upload processed.",
                 "poll_url": f"/api/v1/products/bulk-upload/{upload.id}/",
             },
-            status=status.HTTP_202_ACCEPTED,
+            status=status.HTTP_200_OK,
         )
 
     @extend_schema(tags=["Products - Admin"])
