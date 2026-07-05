@@ -1,8 +1,10 @@
 """
 Image downloader for bulk upload.
 
-Downloads images from URLs and saves them to:
-    /media/images/products/{product_id}/img{n}.jpg
+Downloads images from URLs and saves them via Django's default storage
+backend (local disk in dev, Cloudinary in prod — configured per environment
+in settings) to:
+    images/products/{product_id}/img{n}.jpg
 
 Rules:
   - Timeout: 10 seconds per image
@@ -11,12 +13,11 @@ Rules:
   - Saves as JPEG regardless of source format
 """
 import logging
-import os
 import time
-from pathlib import Path
 
 import requests
-from django.conf import settings
+from django.core.files.base import ContentFile
+from django.core.files.storage import default_storage
 from PIL import Image as PILImage
 import io
 
@@ -32,27 +33,22 @@ def download_and_save_images(product_id: str, image_urls: list[str]) -> list[str
     Download a list of image URLs for a product.
 
     Returns:
-        List of saved relative paths (relative to MEDIA_ROOT).
-        e.g. ["images/products/{id}/img1.jpg", "images/products/{id}/img2.jpg"]
+        List of saved storage paths (as returned by default_storage.save,
+        which is what should be stored in ImageField/CharField references —
+        this works correctly whether storage is local disk or Cloudinary).
 
     Failed downloads are skipped silently (logged at WARNING level).
     """
     if not image_urls:
         return []
 
-    # Create target directory
-    target_dir = Path(settings.MEDIA_ROOT) / "images" / "products" / str(product_id)
-    target_dir.mkdir(parents=True, exist_ok=True)
-
     saved_paths = []
 
     for idx, url in enumerate(image_urls, start=1):
         try:
-            saved = _download_single(url, target_dir, idx)
+            saved = _download_single(product_id, url, idx)
             if saved:
-                # Store relative path (relative to MEDIA_ROOT)
-                rel = os.path.relpath(saved, settings.MEDIA_ROOT)
-                saved_paths.append(rel)
+                saved_paths.append(saved)
         except Exception as e:
             logger.warning(f"Image download failed for product {product_id}, url={url}: {e}")
             continue
@@ -60,8 +56,8 @@ def download_and_save_images(product_id: str, image_urls: list[str]) -> list[str
     return saved_paths
 
 
-def _download_single(url: str, target_dir: Path, idx: int) -> str | None:
-    """Download one image and return the saved file path."""
+def _download_single(product_id: str, url: str, idx: int) -> str | None:
+    """Download one image and save it via default_storage. Returns the storage path."""
     headers = {
         "User-Agent": "Trendio-BulkUpload/1.0 (product image downloader)",
         "Accept": "image/*",
@@ -103,11 +99,10 @@ def _download_single(url: str, target_dir: Path, idx: int) -> str | None:
         logger.warning(f"Could not process image as JPEG from {url}: {e}")
         return None
 
-    # Save to disk
-    filename  = f"img{idx}.jpg"
-    file_path = target_dir / filename
-    with open(file_path, "wb") as f:
-        f.write(jpeg_bytes)
+    # Save via Django's storage API — goes to Cloudinary in prod,
+    # local MEDIA_ROOT in dev, whatever STORAGES["default"] points to.
+    storage_path = f"images/products/{product_id}/img{idx}.jpg"
+    saved_name = default_storage.save(storage_path, ContentFile(jpeg_bytes))
 
-    logger.info(f"Image saved: {file_path}")
-    return str(file_path)
+    logger.info(f"Image saved via storage backend: {saved_name}")
+    return saved_name
