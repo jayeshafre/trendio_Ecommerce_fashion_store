@@ -46,7 +46,7 @@ export default function AddressesPage() {
   return (
     <div className="mx-auto max-w-[800px] px-6 py-10">
       {/* Header */}
-      <div className="mb-6 flex items-start justify-between">
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-xs font-semibold tracking-[0.15em]" style={{ color: "#C2A98A" }}>ACCOUNT</p>
           <h1 className="font-display text-3xl" style={{ color: "#2B2B2B" }}>Saved Addresses</h1>

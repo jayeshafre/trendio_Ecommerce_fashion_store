@@ -67,14 +67,14 @@ export default function AccountPage() {
         style={{ backgroundColor: "#EDE3D9" }}
       >
         <div className="flex items-start justify-between gap-4">
-          <div>
+          <div className="min-w-0">
             <p className="text-xs font-semibold tracking-[0.2em]" style={{ color: "#C2A98A" }}>
               WELCOME BACK
             </p>
             {isLoading ? (
               <div className="skeleton mt-2 h-9 w-48 rounded" />
             ) : (
-              <h1 className="mt-1 font-display text-3xl" style={{ color: "#2B2B2B" }}>
+              <h1 className="mt-1 break-words font-display text-3xl" style={{ color: "#2B2B2B" }}>
                 {user?.full_name || user?.first_name || "—"}
               </h1>
             )}
@@ -95,7 +95,7 @@ export default function AccountPage() {
         </div>
 
         {/* Quick stats */}
-        <div className="mt-6 grid grid-cols-3 gap-4">
+        <div className="mt-6 grid grid-cols-3 gap-2 sm:gap-4">
           {[
             { label: "Total Orders",   value: totalOrders },
             { label: "Member Since",   value: user ? new Date(user.date_joined).getFullYear() : "—" },
@@ -103,13 +103,13 @@ export default function AccountPage() {
           ].map(({ label, value }) => (
             <div
               key={label}
-              className="rounded-xl p-4 text-center"
+              className="rounded-xl p-3 text-center sm:p-4"
               style={{ backgroundColor: "rgba(255,255,255,0.5)" }}
             >
-              <p className="font-display text-2xl font-semibold" style={{ color: "#2B2B2B" }}>
+              <p className="font-display text-base font-semibold sm:text-2xl" style={{ color: "#2B2B2B" }}>
                 {isLoading ? "—" : value}
               </p>
-              <p className="mt-0.5 text-[10px] font-semibold tracking-widest" style={{ color: "#7A6E67" }}>
+              <p className="mt-0.5 text-[9px] font-semibold tracking-widest sm:text-[10px]" style={{ color: "#7A6E67" }}>
                 {label.toUpperCase()}
               </p>
             </div>
@@ -165,18 +165,18 @@ export default function AccountPage() {
                 to={`/account/orders/${order.id}`}
                 className="card-ivory flex items-center justify-between gap-4 px-5 py-4 transition-shadow hover:shadow-ivory"
               >
-                <div>
-                  <p className="text-sm font-semibold" style={{ color: "#2B2B2B" }}>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold" style={{ color: "#2B2B2B" }}>
                     {order.order_number}
                   </p>
-                  <p className="text-xs" style={{ color: "#7A6E67" }}>
+                  <p className="truncate text-xs" style={{ color: "#7A6E67" }}>
                     {order.item_count} item{order.item_count !== 1 ? "s" : ""} ·{" "}
                     {new Date(order.placed_at).toLocaleDateString("en-IN", {
                       day: "numeric", month: "short", year: "numeric",
                     })}
                   </p>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex shrink-0 items-center gap-3">
                   <StatusDot status={order.status} />
                   <p className="font-display text-base" style={{ color: "#2B2B2B" }}>
                     ₹{parseFloat(order.total_amount).toLocaleString("en-IN")}

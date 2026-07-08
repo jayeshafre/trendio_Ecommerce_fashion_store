@@ -112,7 +112,7 @@ export default function OrdersPage() {
             >
               <div className="flex items-start justify-between gap-4">
                 {/* Left */}
-                <div className="flex gap-4">
+                <div className="flex min-w-0 flex-1 gap-4">
                   <div className="h-12 w-12 shrink-0 rounded-lg overflow-hidden"
   style={{ backgroundColor: "#EDE3D9" }}>
   {order.first_item_image ? (
@@ -128,8 +128,8 @@ export default function OrdersPage() {
     </div>
   )}
 </div>
-                  <div>
-                    <p className="font-display text-base font-semibold" style={{ color: "#2B2B2B" }}>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-display text-base font-semibold" style={{ color: "#2B2B2B" }}>
                       {order.order_number}
                     </p>
                     <p className="mt-0.5 text-xs" style={{ color: "#7A6E67" }}>

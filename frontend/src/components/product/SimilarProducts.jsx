@@ -22,8 +22,8 @@ export default function SimilarProducts({ productId }) {
         <p className="mb-6 text-xs font-bold tracking-widest" style={{ color: "#2B2B2B" }}>
           YOU MAY ALSO LIKE
         </p>
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          {[...Array(4)].map((_, i) => (
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+        {[...Array(4)].map((_, i) => (
             <div key={i} className="animate-pulse">
               <div className="aspect-[3/4] rounded-2xl mb-3" style={{ backgroundColor: "#EDE3D9" }} />
               <div className="h-3 w-3/4 rounded mb-2" style={{ backgroundColor: "#EDE3D9" }} />
@@ -44,7 +44,7 @@ export default function SimilarProducts({ productId }) {
         YOU MAY ALSO LIKE
       </p>
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
         {products.map((p) => {
           const price    = p.sale_price || p.base_price;
           const imageUrl = p.primary_image

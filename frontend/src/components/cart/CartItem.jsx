@@ -50,7 +50,7 @@ export default function CartItem({ item }) {
     >
       {/* Image */}
       <Link to={`/product/${product.slug}`} className="shrink-0">
-        <div className="h-24 w-20 overflow-hidden rounded-lg" style={{ backgroundColor: "#EDE3D9" }}>
+        <div className="h-20 w-16 overflow-hidden rounded-lg sm:h-24 sm:w-20" style={{ backgroundColor: "#EDE3D9" }}>
           {imageUrl ? (
             <img
               src={imageUrl}               // ← was: product.primary_image
@@ -93,7 +93,7 @@ export default function CartItem({ item }) {
           </div>
         )}
 
-        <div className="mt-3 flex items-center justify-between">
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
           {/* Qty controls */}
           <div className="flex items-center overflow-hidden rounded-lg border" style={{ borderColor: "#E5DCD3" }}>
             <button type="button" onClick={() => handleQtyChange(localQty - 1)}

@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
-  ShoppingBag, Heart, User, Search, X,
+  ShoppingBag, Heart, User, Search, X, Menu,
   LogOut, Loader2, Bell, Trash2, CheckCheck,
   Package, CreditCard, ShoppingCart,
 } from "lucide-react";
@@ -53,6 +53,8 @@ function NotifIcon({ type }) {
 }
 
 // ── Notification Dropdown ─────────────────────────────────────
+// NOTE: width was a fixed `w-80` (320px) anchored `right-0`, which clips
+// off-screen on phones narrower than ~350px. Fixed with a responsive cap.
 function NotificationDropdown({ onClose }) {
   const { data, isLoading }  = useNotifications({ page_size: 8 });
   const markRead             = useMarkRead();
@@ -69,7 +71,7 @@ function NotificationDropdown({ onClose }) {
 
   return (
     <div
-      className="absolute right-0 top-12 z-50 w-80 overflow-hidden rounded-2xl shadow-xl"
+      className="absolute right-0 top-12 z-50 w-[min(20rem,calc(100vw-1.5rem))] overflow-hidden rounded-2xl shadow-xl"
       style={{ backgroundColor: "white", border: "1px solid #E5DCD3" }}
     >
       {/* Header */}
@@ -204,17 +206,19 @@ export default function Navbar() {
   const navigate       = useNavigate();
   const [searchParams] = useSearchParams();
 
-  const [searchOpen,   setSearchOpen]   = useState(false);
-  const [searchQuery,  setSearchQuery]  = useState("");
-  const [aiResults,    setAiResults]    = useState([]);
-  const [aiLoading,    setAiLoading]    = useState(false);
-  const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [bellOpen,     setBellOpen]     = useState(false);
+  const [searchOpen,     setSearchOpen]     = useState(false);
+  const [searchQuery,    setSearchQuery]    = useState("");
+  const [aiResults,      setAiResults]      = useState([]);
+  const [aiLoading,      setAiLoading]      = useState(false);
+  const [dropdownOpen,   setDropdownOpen]   = useState(false);
+  const [bellOpen,       setBellOpen]       = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const searchRef   = useRef(null);
-  const dropdownRef = useRef(null);
-  const bellRef     = useRef(null);
-  const debounceRef = useRef(null);
+  const searchRef       = useRef(null); // desktop (lg+) input
+  const mobileSearchRef  = useRef(null); // mobile/tablet panel input
+  const dropdownRef     = useRef(null);
+  const bellRef          = useRef(null);
+  const debounceRef     = useRef(null);
 
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const totalItems      = useCartStore((s) => s.totalItems);
@@ -227,9 +231,11 @@ export default function Navbar() {
 
   const activeCategory = searchParams.get("category") || "";
 
-  // Focus search input on open
+  // Focus whichever search input is actually visible (desktop vs mobile panel)
   useEffect(() => {
-    if (searchOpen) searchRef.current?.focus();
+    if (!searchOpen) return;
+    const el = searchRef.current?.offsetParent ? searchRef.current : mobileSearchRef.current;
+    el?.focus();
   }, [searchOpen]);
 
   // Close search dropdown on outside click
@@ -285,18 +291,19 @@ export default function Navbar() {
     const q = searchQuery.trim();
     if (q) {
       navigate(`/search?q=${encodeURIComponent(q)}`);
-      setSearchOpen(false);
-      setSearchQuery("");
-      setDropdownOpen(false);
-      setAiResults([]);
+      closeSearch();
     }
   };
 
-  const handleResultClick = () => {
+  const closeSearch = () => {
     setSearchOpen(false);
     setSearchQuery("");
     setDropdownOpen(false);
     setAiResults([]);
+  };
+
+  const handleResultClick = () => {
+    closeSearch();
   };
 
   const goIfAuth = (destination, label) => {
@@ -308,24 +315,98 @@ export default function Navbar() {
     navigate(destination);
   };
 
+  // Shared AI-results list, rendered inside both the desktop dropdown
+  // and the mobile/tablet search panel so the markup isn't duplicated.
+  const renderAiResults = () => (
+    <>
+      {aiResults.map((product) => {
+        const price    = product.sale_price || product.base_price;
+        const imageUrl = product.primary_image
+          ? `http://localhost:8000/media/${product.primary_image.replace(/\\/g, "/")}`
+          : null;
+
+        return (
+          <Link
+            key={product.id}
+            to={`/product/${product.slug}`}
+            onClick={handleResultClick}
+            className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-[#F8F5F2]"
+            style={{ borderBottom: "1px solid #F0EAE4" }}
+          >
+            <div
+              className="h-12 w-12 flex-shrink-0 overflow-hidden rounded-lg"
+              style={{ backgroundColor: "#EDE3D9" }}
+            >
+              {imageUrl && (
+                <img src={imageUrl} alt={product.title} className="h-full w-full object-cover" />
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-medium line-clamp-1" style={{ color: "#2B2B2B" }}>
+                {product.title}
+              </p>
+              <p className="text-[10px] mt-0.5" style={{ color: "#7A6E67" }}>
+                {product.category_name}
+              </p>
+            </div>
+            <div className="text-right flex-shrink-0">
+              <p className="text-xs font-semibold" style={{ color: "#2B2B2B" }}>
+                {formatCurrency(price)}
+              </p>
+              {product.sale_price && (
+                <p className="text-[10px] line-through" style={{ color: "#7A6E67" }}>
+                  {formatCurrency(product.base_price)}
+                </p>
+              )}
+            </div>
+          </Link>
+        );
+      })}
+
+      <button
+        type="submit"
+        className="w-full py-3 text-xs font-bold tracking-widest transition-colors hover:bg-[#EDE3D9]"
+        style={{ color: "#C2A98A" }}
+      >
+        SEE ALL RESULTS FOR "{searchQuery.toUpperCase()}" →
+      </button>
+    </>
+  );
+
   return (
     <header
       className="sticky top-0 z-50 w-full border-b"
       style={{ backgroundColor: "#F8F5F2", borderColor: "#E5DCD3" }}
     >
-      <div className="mx-auto flex h-16 max-w-[1400px] items-center gap-6 px-6">
+      <div className="mx-auto flex h-16 max-w-[1400px] items-center gap-3 px-4 sm:px-6 lg:gap-6">
+
+        {/* Hamburger — phones & tablets only (<1024px) */}
+        <button
+          type="button"
+          onClick={() => {
+            setMobileMenuOpen((o) => !o);
+            setSearchOpen(false);
+          }}
+          className="shrink-0 rounded-lg p-1.5 lg:hidden"
+          aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
+        >
+          {mobileMenuOpen
+            ? <X size={22} style={{ color: "#2B2B2B" }} strokeWidth={1.5} />
+            : <Menu size={22} style={{ color: "#2B2B2B" }} strokeWidth={1.5} />
+          }
+        </button>
 
         {/* Logo */}
         <Link
           to={ROUTES.HOME}
-          className="mr-4 shrink-0 font-display text-3xl italic"
+          className="mr-1 shrink-0 font-display text-2xl italic sm:text-3xl lg:mr-4"
           style={{ color: "#2B2B2B", fontFamily: "'Playfair Display', serif" }}
         >
           Trendio
         </Link>
 
-        {/* Category nav */}
-        <nav className="hidden items-center gap-6 md:flex">
+        {/* Category nav — desktop only (1024px+) */}
+        <nav className="hidden items-center gap-6 lg:flex">
           {NAV_CATEGORIES.map((cat) => {
             const isActive = activeCategory === cat.slug;
             return (
@@ -347,8 +428,8 @@ export default function Navbar() {
 
         <div className="flex-1" />
 
-        {/* AI Search */}
-        <div className="relative hidden md:block" ref={dropdownRef}>
+        {/* AI Search — desktop only (1024px+) */}
+        <div className="relative hidden lg:block" ref={dropdownRef}>
           {searchOpen ? (
             <form onSubmit={handleSearch}>
               <div
@@ -367,15 +448,7 @@ export default function Navbar() {
                   className="w-52 bg-transparent outline-none placeholder:text-gray-400"
                   style={{ fontSize: "0.8rem", color: "#2B2B2B" }}
                 />
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSearchOpen(false);
-                    setSearchQuery("");
-                    setDropdownOpen(false);
-                    setAiResults([]);
-                  }}
-                >
+                <button type="button" onClick={closeSearch}>
                   <X size={14} style={{ color: "#2B2B2B" }} />
                 </button>
               </div>
@@ -383,8 +456,8 @@ export default function Navbar() {
               {/* AI Results Dropdown */}
               {dropdownOpen && aiResults.length > 0 && (
                 <div
-                  className="absolute left-0 right-0 top-12 z-50 overflow-hidden rounded-2xl shadow-xl"
-                  style={{ backgroundColor: "#fff", border: "1px solid #E5DCD3", minWidth: "320px" }}
+                  className="absolute left-0 top-12 z-50 w-[min(24rem,90vw)] overflow-hidden rounded-2xl shadow-xl"
+                  style={{ backgroundColor: "#fff", border: "1px solid #E5DCD3" }}
                 >
                   <div
                     className="border-b px-4 py-2.5"
@@ -394,58 +467,7 @@ export default function Navbar() {
                       AI SUGGESTIONS
                     </p>
                   </div>
-
-                  {aiResults.map((product) => {
-                    const price    = product.sale_price || product.base_price;
-                    const imageUrl = product.primary_image
-                      ? `http://localhost:8000/media/${product.primary_image.replace(/\\/g, "/")}`
-                      : null;
-
-                    return (
-                      <Link
-                        key={product.id}
-                        to={`/product/${product.slug}`}
-                        onClick={handleResultClick}
-                        className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-[#F8F5F2]"
-                        style={{ borderBottom: "1px solid #F0EAE4" }}
-                      >
-                        <div
-                          className="h-12 w-12 flex-shrink-0 overflow-hidden rounded-lg"
-                          style={{ backgroundColor: "#EDE3D9" }}
-                        >
-                          {imageUrl && (
-                            <img src={imageUrl} alt={product.title} className="h-full w-full object-cover" />
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-medium line-clamp-1" style={{ color: "#2B2B2B" }}>
-                            {product.title}
-                          </p>
-                          <p className="text-[10px] mt-0.5" style={{ color: "#7A6E67" }}>
-                            {product.category_name}
-                          </p>
-                        </div>
-                        <div className="text-right flex-shrink-0">
-                          <p className="text-xs font-semibold" style={{ color: "#2B2B2B" }}>
-                            {formatCurrency(price)}
-                          </p>
-                          {product.sale_price && (
-                            <p className="text-[10px] line-through" style={{ color: "#7A6E67" }}>
-                              {formatCurrency(product.base_price)}
-                            </p>
-                          )}
-                        </div>
-                      </Link>
-                    );
-                  })}
-
-                  <button
-                    type="submit"
-                    className="w-full py-3 text-xs font-bold tracking-widest transition-colors hover:bg-[#EDE3D9]"
-                    style={{ color: "#C2A98A" }}
-                  >
-                    SEE ALL RESULTS FOR "{searchQuery.toUpperCase()}" →
-                  </button>
+                  {renderAiResults()}
                 </div>
               )}
             </form>
@@ -464,35 +486,48 @@ export default function Navbar() {
         {/* ── Right icons ──────────────────────────────────── */}
         <div className="flex items-center">
 
-          {/* Profile */}
+          {/* Search icon — phones & tablets only (<1024px) */}
+          <button
+            type="button"
+            onClick={() => {
+              setSearchOpen((o) => !o);
+              setMobileMenuOpen(false);
+            }}
+            className="flex flex-col items-center gap-0.5 px-2 py-1 lg:hidden"
+            aria-label="Search"
+          >
+            <Search size={18} style={{ color: searchOpen ? "#C2A98A" : "#2B2B2B" }} strokeWidth={1.5} />
+          </button>
+
+          {/* Profile — icon always visible; label appears at lg+ */}
           <button
             type="button"
             onClick={() => goIfAuth(ROUTES.ACCOUNT, "your profile")}
-            className="flex flex-col items-center gap-0.5 border-l px-4 py-1 transition-opacity hover:opacity-60"
+            className="flex flex-col items-center gap-0.5 border-l px-2 py-1 transition-opacity hover:opacity-60 lg:px-4"
             style={{ borderColor: "#E5DCD3" }}
           >
             <User size={18} style={{ color: "#2B2B2B" }} strokeWidth={1.5} />
-            <span className="text-[9px] font-semibold tracking-widest" style={{ color: "#2B2B2B" }}>PROFILE</span>
+            <span className="hidden text-[9px] font-semibold tracking-widest lg:inline" style={{ color: "#2B2B2B" }}>PROFILE</span>
           </button>
 
-          {/* Wishlist */}
+          {/* Wishlist — icon always visible; label appears at lg+ */}
           <button
             type="button"
             onClick={() => goIfAuth(ROUTES.WISHLIST, "your wishlist")}
-            className="flex flex-col items-center gap-0.5 border-l px-4 py-1 transition-opacity hover:opacity-60"
+            className="flex flex-col items-center gap-0.5 border-l px-2 py-1 transition-opacity hover:opacity-60 lg:px-4"
             style={{ borderColor: "#E5DCD3" }}
           >
             <Heart size={18} style={{ color: "#2B2B2B" }} strokeWidth={1.5} />
-            <span className="text-[9px] font-semibold tracking-widest" style={{ color: "#2B2B2B" }}>WISHLIST</span>
+            <span className="hidden text-[9px] font-semibold tracking-widest lg:inline" style={{ color: "#2B2B2B" }}>WISHLIST</span>
           </button>
 
-          {/* ── Notification Bell ── */}
+          {/* ── Notification Bell — all sizes ── */}
           {isAuthenticated && (
             <div className="relative border-l" style={{ borderColor: "#E5DCD3" }} ref={bellRef}>
               <button
                 type="button"
                 onClick={() => setBellOpen((o) => !o)}
-                className="flex flex-col items-center gap-0.5 px-4 py-1 transition-opacity hover:opacity-60"
+                className="flex flex-col items-center gap-0.5 px-2 py-1 lg:px-4"
               >
                 <div className="relative">
                   <Bell
@@ -510,7 +545,7 @@ export default function Navbar() {
                   )}
                 </div>
                 <span
-                  className="text-[9px] font-semibold tracking-widest"
+                  className="hidden text-[9px] font-semibold tracking-widest lg:inline"
                   style={{ color: bellOpen ? "#C2A98A" : "#2B2B2B" }}
                 >
                   ALERTS
@@ -523,10 +558,10 @@ export default function Navbar() {
             </div>
           )}
 
-          {/* Bag */}
+          {/* Bag — all sizes */}
           <Link
             to={ROUTES.CART}
-            className="relative flex flex-col items-center gap-0.5 border-l px-4 py-1 transition-opacity hover:opacity-60"
+            className="relative flex flex-col items-center gap-0.5 border-l px-2 py-1 transition-opacity hover:opacity-60 lg:px-4"
             style={{ borderColor: "#E5DCD3" }}
           >
             <div className="relative">
@@ -540,12 +575,84 @@ export default function Navbar() {
                 </span>
               )}
             </div>
-            <span className="text-[9px] font-semibold tracking-widest" style={{ color: "#2B2B2B" }}>BAG</span>
+            <span className="hidden text-[9px] font-semibold tracking-widest lg:inline" style={{ color: "#2B2B2B" }}>BAG</span>
           </Link>
 
-          
         </div>
       </div>
+
+      {/* ── Mobile/tablet search panel (<1024px) ───────────── */}
+      {searchOpen && (
+        <div
+          className="border-t px-4 py-3 lg:hidden"
+          style={{ borderColor: "#E5DCD3" }}
+        >
+          <form onSubmit={handleSearch}>
+            <div
+              className="flex items-center gap-2 rounded-full px-4 py-2.5"
+              style={{ backgroundColor: "#EDE3D9" }}
+            >
+              {aiLoading
+                ? <Loader2 size={14} className="animate-spin" style={{ color: "#C2A98A" }} />
+                : <Search size={14} style={{ color: "#C2A98A" }} />
+              }
+              <input
+                ref={mobileSearchRef}
+                value={searchQuery}
+                onChange={handleQueryChange}
+                placeholder="Search products..."
+                className="w-full bg-transparent outline-none placeholder:text-gray-400"
+                style={{ fontSize: "0.85rem", color: "#2B2B2B" }}
+              />
+              <button type="button" onClick={closeSearch}>
+                <X size={16} style={{ color: "#2B2B2B" }} />
+              </button>
+            </div>
+
+            {dropdownOpen && aiResults.length > 0 && (
+              <div
+                className="mt-2 max-h-[70vh] overflow-y-auto rounded-2xl shadow-xl"
+                style={{ backgroundColor: "#fff", border: "1px solid #E5DCD3" }}
+              >
+                <div
+                  className="border-b px-4 py-2.5"
+                  style={{ borderColor: "#E5DCD3", backgroundColor: "#F8F5F2" }}
+                >
+                  <p className="text-[10px] font-bold tracking-widest" style={{ color: "#C2A98A" }}>
+                    AI SUGGESTIONS
+                  </p>
+                </div>
+                {renderAiResults()}
+              </div>
+            )}
+          </form>
+        </div>
+      )}
+
+      {/* ── Mobile/tablet menu drawer (<1024px) ─────────────── */}
+      {mobileMenuOpen && (
+        <div
+          className="border-t px-4 py-4 lg:hidden"
+          style={{ borderColor: "#E5DCD3", backgroundColor: "#FAF7F4" }}
+        >
+          <nav className="flex flex-col gap-3.5">
+            {NAV_CATEGORIES.map((cat) => {
+              const isActive = activeCategory === cat.slug;
+              return (
+                <Link
+                  key={cat.slug}
+                  to={`/shop?category=${cat.slug}`}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="text-sm font-semibold tracking-[0.08em]"
+                  style={{ color: isActive ? "#C2A98A" : "#2B2B2B" }}
+                >
+                  {cat.label}
+                </Link>
+              );
+            })}
+          </nav>
+        </div>
+      )}
     </header>
   );
 }

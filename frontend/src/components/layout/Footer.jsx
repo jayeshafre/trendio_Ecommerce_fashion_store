@@ -17,7 +17,7 @@ export default function Footer() {
     >
 
       {/* ================= MAIN GRID ================= */}
-      <div className="mx-auto max-w-[1400px] px-6 py-12">
+      <div className="mx-auto max-w-[1400px] px-4 py-12 md:px-6">
         <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-4">
 
           {/* Column 1 */}
@@ -71,10 +71,10 @@ export default function Footer() {
 
       {/* ================= BOTTOM SECTION ================= */}
       <div className="border-t" style={{ borderColor: "#E5DCD3" }}>
-        <div className="w-full px-6 py-6">
+        <div className="w-full px-4 py-6 md:px-6">
 
           {/* Row 1: Full width spacing */}
-          <div className="flex w-full items-center justify-between">
+          <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:justify-between sm:text-left">
 
             {/* Left */}
             <Link
@@ -86,12 +86,12 @@ export default function Footer() {
             </Link>
 
             {/* Center */}
-            <p className="text-sm text-[#7A6E67] text-center">
+            <p className="text-sm text-[#7A6E67]">
               © {new Date().getFullYear()} Trendio. All rights reserved.
             </p>
 
             {/* Right */}
-            <div className="flex gap-3">
+            <div className="flex flex-wrap justify-center gap-3">
               {["Visa", "Mastercard", "UPI", "Razorpay"].map((m) => (
                 <span key={m} className="border px-3 py-1 text-xs rounded">
                   {m}
@@ -108,13 +108,10 @@ export default function Footer() {
               <span className="text-[#C2A98A]">Jayesh Afre</span>
             </p>
           </div>
-
-          {/* Row 3: Address BELOW NAME */}
-          {/* Row 3: Address (LEFT) + Contact (RIGHT) */}
+{/*
 <div className="mt-6 border-t pt-6">
   <div className="flex flex-col gap-6 sm:flex-row sm:justify-between">
 
-    {/* LEFT: Address */}
     <div className="text-sm leading-relaxed" style={{ color: "#7A6E67" }}>
       <h3
         className="mb-2 text-sm font-bold"
@@ -129,7 +126,6 @@ export default function Footer() {
       <p>Savda – 425502, India</p>
     </div>
 
-    {/* RIGHT: Contact */}
     <div className="text-sm" style={{ color: "#7A6E67" }}>
       <p>
         Telephone:{" "}
@@ -141,7 +137,7 @@ export default function Footer() {
 
   </div>
 </div>
-
+*/}
         </div>
       </div>
 

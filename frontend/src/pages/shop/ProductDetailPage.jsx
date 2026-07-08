@@ -570,7 +570,7 @@ export default function ProductDetailPage() {
       <div className="mx-auto max-w-[1400px] px-4 py-6 md:px-6">
 
         {/* Breadcrumb */}
-        <nav className="mb-6 flex items-center gap-1.5 text-xs" style={{ color: "#7A6E67" }}>
+        <nav className="mb-6 flex flex-wrap items-center gap-1.5 text-xs" style={{ color: "#7A6E67" }}>
           <Link to="/" className="hover:text-[#C2A98A] transition-colors">Home</Link>
           <ChevronRight size={12} />
           <Link to="/shop" className="hover:text-[#C2A98A] transition-colors">Shop</Link>
@@ -588,7 +588,7 @@ export default function ProductDetailPage() {
         </nav>
 
         {/* Main grid */}
-        <div className="grid gap-10 lg:grid-cols-[460px_720px]">
+        <div className="grid gap-10 lg:grid-cols-[minmax(280px,460px)_minmax(0,1fr)]">
 
           <ProductImageGallery images={images} title={title} />
 
