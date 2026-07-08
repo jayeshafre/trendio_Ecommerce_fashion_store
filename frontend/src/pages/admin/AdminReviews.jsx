@@ -125,7 +125,7 @@ export default function AdminReviews() {
         </div>
 
         {/* Rating filter */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs" style={{ color: "#7A6E67" }}>Rating:</span>
           {["", "5", "4", "3", "2", "1"].map((r) => (
             <button

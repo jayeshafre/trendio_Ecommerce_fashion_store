@@ -122,10 +122,10 @@ export default function BulkUploadPage() {
 
         {/* Step 1 — Download template */}
         <div
-          className="mb-5 flex items-center justify-between rounded-xl p-5"
+          className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl p-5"
           style={{ backgroundColor: "#FFFFFF", border: "1px solid #E5DCD3" }}
         >
-          <div>
+          <div className="min-w-0">
             <p className="mb-0.5 text-sm font-semibold" style={{ color: "#2B2B2B" }}>
               Step 1 — Download the CSV template
             </p>

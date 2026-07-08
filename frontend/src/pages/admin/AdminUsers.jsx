@@ -257,7 +257,52 @@ export default function AdminUsers() {
           <p className="font-display text-xl" style={{ color: "#2B2B2B" }}>No users found</p>
         </div>
       ) : (
-        <div className="card-ivory overflow-hidden">
+        <>
+          {/* Mobile/tablet — card list (the grid table below needs
+              ~650px of fixed-column width and won't fit next to the
+              sidebar until lg) */}
+          <div className="space-y-3 lg:hidden">
+            {users.map((user) => (
+              <button
+                key={user.id}
+                onClick={() => setSelectedId(user.id)}
+                className="card-ivory block w-full space-y-2 p-4 text-left transition-colors hover:bg-[#FAF7F4]"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold" style={{ color: "#2B2B2B" }}>
+                      {user.full_name || "—"}
+                    </p>
+                    <p className="truncate text-xs" style={{ color: "#7A6E67" }}>
+                      {user.email}
+                    </p>
+                  </div>
+                  <ChevronRight size={16} className="shrink-0" style={{ color: "#C2A98A" }} />
+                </div>
+                <div className="flex flex-wrap items-center justify-between gap-2 border-t pt-2" style={{ borderColor: "#E5DCD3" }}>
+                  <div className="flex items-center gap-1">
+                    {user.role === "admin" && (
+                      <ShieldCheck size={12} style={{ color: "#C2A98A" }} />
+                    )}
+                    <span className="text-xs capitalize" style={{ color: "#2B2B2B" }}>
+                      {user.role}
+                    </span>
+                    <span className="text-xs" style={{ color: "#C0B8B4" }}>·</span>
+                    <span className="text-[11px]" style={{ color: "#7A6E67" }}>
+                      Joined {new Date(user.date_joined).toLocaleDateString("en-IN", {
+                        day: "numeric", month: "short", year: "numeric",
+                      })}
+                    </span>
+                  </div>
+                  <ActiveBadge isActive={user.is_active} />
+                </div>
+              </button>
+            ))}
+          </div>
+
+          {/* Desktop — full grid table (lg+, where 650px of fixed
+              columns actually has room next to the sidebar) */}
+          <div className="card-ivory hidden overflow-hidden lg:block">
           {/* Table header */}
           <div
             className="grid grid-cols-[1fr_180px_100px_80px_32px] gap-4 border-b px-5 py-3"
@@ -317,7 +362,8 @@ export default function AdminUsers() {
               </button>
             ))}
           </div>
-        </div>
+          </div>
+        </>
       )}
 
       {/* Pagination */}

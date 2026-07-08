@@ -130,7 +130,82 @@ export default function AdminOrders() {
           <p className="font-display text-xl" style={{ color: "#2B2B2B" }}>No orders found</p>
         </div>
       ) : (
-        <div className="card-ivory overflow-hidden">
+        <>
+          {/* Mobile/tablet — card list (the grid table below needs
+              ~750px of fixed-column width and won't fit next to the
+              sidebar until lg) */}
+          <div className="space-y-3 lg:hidden">
+            {filtered.map((order) => {
+              const allowed    = TRANSITIONS[order.status] ?? [];
+              const isUpdating = updatingId === order.id;
+
+              return (
+                <div key={order.id} className="card-ivory space-y-3 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold" style={{ color: "#2B2B2B" }}>
+                        {order.order_number}
+                      </p>
+                      <p className="text-xs" style={{ color: "#7A6E67" }}>
+                        {new Date(order.placed_at).toLocaleDateString("en-IN", {
+                          day: "numeric", month: "short", year: "numeric",
+                        })} · {order.item_count} item{order.item_count !== 1 ? "s" : ""}
+                      </p>
+                      <p className="truncate text-xs" style={{ color: "#7A6E67" }}>
+                        {order.user_email ?? "—"}
+                      </p>
+                    </div>
+                    <OrderStatusBadge status={order.status} />
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-t pt-3" style={{ borderColor: "#E5DCD3" }}>
+                    <p className="font-display text-sm font-semibold" style={{ color: "#2B2B2B" }}>
+                      ₹{parseFloat(order.total_amount).toLocaleString("en-IN")}
+                    </p>
+
+                    {allowed.length === 0 ? (
+                      <span className="text-xs" style={{ color: "#C0B8B4" }}>No actions</span>
+                    ) : (
+                      <div className="relative">
+                        <select
+                          disabled={isUpdating}
+                          defaultValue=""
+                          onChange={(e) => {
+                            if (e.target.value) {
+                              handleStatusChange(order.id, e.target.value);
+                              e.target.value = "";
+                            }
+                          }}
+                          className="w-full appearance-none rounded-lg border py-1.5 pl-3 pr-7 text-xs outline-none transition-colors focus:border-[#C2A98A]"
+                          style={{
+                            borderColor:     "#E5DCD3",
+                            backgroundColor: isUpdating ? "#EDE3D9" : "white",
+                            color:           "#2B2B2B",
+                          }}
+                        >
+                          <option value="">{isUpdating ? "Updating…" : "Change status"}</option>
+                          {allowed.map((s) => (
+                            <option key={s} value={s}>
+                              → {s.charAt(0).toUpperCase() + s.slice(1)}
+                            </option>
+                          ))}
+                        </select>
+                        <ChevronDown
+                          size={11}
+                          className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2"
+                          style={{ color: "#7A6E67" }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Desktop — full grid table (lg+, where 750px of fixed
+              columns actually has room next to the sidebar) */}
+          <div className="card-ivory hidden overflow-hidden lg:block">
           {/* Table header */}
           <div
             className="grid grid-cols-[1fr_140px_120px_100px_140px] gap-4 border-b px-5 py-3"
@@ -223,7 +298,8 @@ export default function AdminOrders() {
               );
             })}
           </div>
-        </div>
+          </div>
+        </>
       )}
 
       {/* Pagination */}
